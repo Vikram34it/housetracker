@@ -1232,11 +1232,14 @@
     <label class="btn btn-ghost" style="cursor:pointer" title="Restore Backup">
       Restore <input type="file" accept=".json" style="display:none" onchange="restoreBackup(event)">
     </label>
-    <button class="btn btn-primary admin-only" onclick="openModal('add')">+ Add Points</button>
+    <button class="btn btn-primary" onclick="openModal('add')">+ Add Points</button>
     <button class="btn btn-ghost admin-only" onclick="openModal('bulk')">Bulk</button>
-    <button class="btn btn-ghost" onclick="exportCSV()" title="Export CSV">Export</button>
+    <button class="btn btn-ghost admin-only" onclick="downloadBackup()" title="Download Backup">Backup</button>
+    <label class="btn btn-ghost admin-only" style="cursor:pointer" title="Restore Backup">
+      Restore <input type="file" accept=".json" style="display:none" onchange="restoreBackup(event)">
+    </label>
+    <button class="btn btn-ghost admin-only" onclick="exportCSV()" title="Export CSV">Export</button>
     <button class="btn btn-danger btn-icon admin-only" onclick="confirmReset()" title="Reset All">Reset</button>
-    <button class="btn btn-ghost" onclick="openModal('password')" title="Change Password">🔑</button>
     <button class="btn btn-ghost" onclick="handleLogout()" title="Logout">Logout</button>
   </div>
 </div>
@@ -1244,7 +1247,7 @@
 <!-- NAV TABS -->
 <div class="nav-tabs" id="navTabs">
   <button class="nav-tab active" data-view="dashboard">Dashboard</button>
-  <button class="nav-tab" data-view="import">Excel Import</button>
+  <button class="nav-tab admin-only" data-view="import">Excel Import</button>
   <button class="nav-tab" data-view="houses">Houses</button>
   <button class="nav-tab" data-view="comparison">Comparison</button>
   <button class="nav-tab" data-view="charts">Analytics</button>

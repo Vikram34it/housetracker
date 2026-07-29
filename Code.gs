@@ -56,6 +56,8 @@ function doPost(e) {
         return jsonResponse(deleteUser(data.username));
       case 'changePassword':
         return jsonResponse(changePassword(data.username, data.oldPassword, data.newPassword));
+      case 'resetPassword':
+        return jsonResponse(resetPassword(data.username, data.newPassword));
       
       // Data operations (require admin for write operations)
       case 'addEntry':
@@ -87,6 +89,12 @@ function doPost(e) {
 function jsonResponse(data, statusCode) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Handle CORS - return response with proper headers
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 // ===== SHEET HELPERS =====
@@ -554,6 +562,30 @@ function changePassword(username, oldPassword, newPassword) {
       } else {
         return {success: false, error: 'Invalid old password'};
       }
+    }
+  }
+  
+  return {success: false, error: 'User not found'};
+}
+
+// Reset password (admin only - no old password needed)
+function resetPassword(username, newPassword) {
+  if(!newPassword) {
+    return {success: false, error: 'New password is required'};
+  }
+  
+  if(newPassword.length < 4) {
+    return {success: false, error: 'Password must be at least 4 characters'};
+  }
+  
+  const sheet = getSheet(SHEET_NAME_USERS);
+  const data = sheet.getDataRange().getValues();
+  
+  for(let i = 1; i < data.length; i++) {
+    if(data[i][0].toLowerCase() === username.toLowerCase()) {
+      const hashedPassword = hashPassword(newPassword);
+      sheet.getRange(i + 1, 2).setValue(hashedPassword);
+      return {success: true, message: 'Password reset successfully'};
     }
   }
   

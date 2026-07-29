@@ -1114,25 +1114,80 @@
   }
 
   @media (max-width: 768px) {
-    .header { padding: 0 15px; height: 60px; }
-    .logo h1 { font-size: 1rem; }
-    .header-actions { gap: 4px; }
-    .btn { padding: 7px 12px; font-size: 0.75rem; }
-    .nav-tabs { padding: 10px 15px; }
-    .container { padding: 16px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .podium { flex-direction: column; align-items: center; }
+    .header { 
+      padding: 0 12px; 
+      height: auto; 
+      min-height: 60px;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .logo { flex: 1; min-width: 200px; }
+    .logo img { height: 32px !important; width: 32px !important; }
+    .logo h1 { font-size: 0.85rem; }
+    .header-actions { 
+      width: 100%; 
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .header-actions .btn { 
+      padding: 6px 10px; 
+      font-size: 0.7rem; 
+    }
+    .user-info { gap: 6px; }
+    .user-name { font-size: 0.75rem; }
+    .user-role { font-size: 0.6rem; }
+    .user-avatar { width: 28px; height: 28px; font-size: 0.75rem; }
+    .nav-tabs { 
+      padding: 8px 12px; 
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab { padding: 6px 14px; font-size: 0.75rem; white-space: nowrap; }
+    .container { padding: 12px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-box { padding: 12px; }
+    .stat-total { font-size: 1.5rem; }
+    .podium { flex-direction: column; align-items: center; padding: 20px 0; }
     .podium-spot { order: unset !important; width: 100%; max-width: 280px; min-height: auto; }
+    .podium-spot.spot-1 { transform: none; }
     .form-row { grid-template-columns: 1fr; }
     .donut-container { flex-direction: column; }
     .monthly-podium { flex-direction: column; align-items: center; }
     .month-nav { flex-wrap: wrap; justify-content: flex-end; }
+    .comparison-table { font-size: 0.75rem; }
+    .comparison-table th, .comparison-table td { padding: 8px 6px; }
+    .history-table { font-size: 0.75rem; display: block; overflow-x: auto; }
+    .history-table th, .history-table td { padding: 8px 6px; white-space: nowrap; }
+    .house-detail-card { padding: 16px; }
+    .house-detail-total { font-size: 2rem; }
+    .modal { margin: 10px; max-height: 95vh; }
+    .login-card { padding: 24px; margin: 10px; }
+    .login-logo { width: 60px; height: 60px; font-size: 1.5rem; }
+    .login-title { font-size: 1.2rem; }
+    .section-header { flex-direction: column; gap: 10px; align-items: flex-start; }
+    .history-controls { flex-direction: column; }
+    .filter-chips { width: 100%; }
+    .search-box { width: 100%; }
+    .month-picker { flex-wrap: wrap; gap: 4px; }
+    .month-chip { padding: 4px 10px; font-size: 0.65rem; }
   }
 
   @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .house-detail-grid { grid-template-columns: 1fr; }
     .awards-grid { grid-template-columns: 1fr; }
+    .award-card { padding: 16px; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card { padding: 16px; }
+    .toast { font-size: 0.8rem; padding: 10px 14px; }
+    .btn-icon { width: 32px; height: 32px; }
+    table { font-size: 0.7rem; }
+    th, td { padding: 6px 4px; }
   }
 </style>
 </head>
@@ -1181,6 +1236,7 @@
     <button class="btn btn-ghost admin-only" onclick="openModal('bulk')">Bulk</button>
     <button class="btn btn-ghost" onclick="exportCSV()" title="Export CSV">Export</button>
     <button class="btn btn-danger btn-icon admin-only" onclick="confirmReset()" title="Reset All">Reset</button>
+    <button class="btn btn-ghost" onclick="openModal('password')" title="Change Password">🔑</button>
     <button class="btn btn-ghost" onclick="handleLogout()" title="Logout">Logout</button>
   </div>
 </div>
@@ -1575,7 +1631,7 @@
 // ===== CONFIGURATION =====
 // IMPORTANT: Replace this with your deployed Google Apps Script URL
 // To get this URL: Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWzjPk8Z48MFN_bQTRnsf2gP8NXRJGXYbrVqImZERtELNaYJKKvI9ocs2otmVYKtgS/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9WHu9aKgfDwME7kXbyvsT3pTl5RlOhpZYXfxfCUdlriKYPv_4ww1rKjliEzLvhvSL/exec';
 
 // ===== CONSTANTS =====
 const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
@@ -3333,10 +3389,11 @@ function renderUsersTable() {
         </span>
       </td>
       <td>
+        <button class="btn btn-ghost btn-sm" onclick="resetUserPassword('${user.username}')">Reset PIN</button>
         ${user.username !== 'admin' ? `
           <button class="btn btn-ghost btn-sm" onclick="editUser('${user.username}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')">Delete</button>
-        ` : '<span style="color:var(--muted);font-size:0.8rem">Protected</span>'}
+        ` : ''}
       </td>
     </tr>
   `).join('');
@@ -3387,6 +3444,30 @@ async function addNewUser() {
     }
   } catch(err) {
     showToast('Failed to add user: ' + err.message, 'error');
+  }
+}
+
+async function resetUserPassword(username) {
+  const newPassword = prompt(`Enter new password for "${username}":`);
+  if(!newPassword) return;
+  
+  if(newPassword.length < 4) {
+    showToast('Password must be at least 4 characters', 'error');
+    return;
+  }
+  
+  try {
+    showSaving();
+    const result = await apiPost({action: 'resetPassword', username, newPassword});
+    
+    if(result.success) {
+      showSaved();
+      showToast(`Password reset for "${username}"`, 'success');
+    } else {
+      showToast(result.error, 'error');
+    }
+  } catch(err) {
+    showToast('Failed to reset password: ' + err.message, 'error');
   }
 }
 

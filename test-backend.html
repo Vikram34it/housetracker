@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Tracker - Backend Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { color: #38bdf8; }
+    .status { padding: 10px; margin: 10px 0; border-radius: 8px; }
+    .success { background: rgba(34,197,94,0.2); border: 1px solid #22c55e; }
+    .error { background: rgba(239,68,68,0.2); border: 1px solid #ef4444; }
+    .info { background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #2a2a4a;
+      color: #fff;
+    }
+    button { cursor: pointer; background: #38bdf8; border: none; font-weight: bold; }
+    button:hover { background: #7dd3fc; }
+    pre { background: #0a0e1a; padding: 15px; border-radius: 8px; overflow-x: auto; }
+    .log { margin-top: 20px; }
+    .log-entry { padding: 5px 0; border-bottom: 1px solid #333; }
+  </style>
+</head>
+<body>
+  <h1>House Tracker Backend Test</h1>
+  
+  <div class="info status">
+    <strong>Instructions:</strong> Enter your Apps Script URL below and click "Test Connection"
+  </div>
+  
+  <div style="margin: 20px 0;">
+    <label>Apps Script URL:</label><br>
+    <input type="text" id="scriptUrl" style="width: 100%;" placeholder="https://script.google.com/macros/s/AKfyc.../exec">
+  </div>
+  
+  <div>
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="testAddEntry()">Test Add Entry</button>
+    <button onclick="testGetEntries()">Test Get Entries</button>
+    <button onclick="testReset()">Test Reset</button>
+  </div>
+  
+  <div id="results" class="log"></div>
+
+  <script>
+    const resultsDiv = document.getElementById('results');
+    
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      resultsDiv.prepend(entry);
+    }
+    
+    function getUrl() {
+      return document.getElementById('scriptUrl').value;
+    }
+    
+    async function testConnection() {
+      const url = getUrl();
+      if (!url) {
+        log('Please enter the Apps Script URL', 'error');
+        return;
+      }
+      
+      try {
+        log('Testing connection...');
+        const response = await fetch(`${url}?action=getEntries`);
+        const data = await response.json();
+        
+        if (data.error) {
+          log(`Error: ${data.error}`, 'error');
+        } else {
+          log(`Connection successful! Found ${data.length} entries.`, 'success');
+        }
+      } catch (err) {
+        log(`Connection failed: ${err.message}`, 'error');
+      }
+    }
+    
+    async function testAddEntry() {
+      const url = getUrl();
+      if (!url) {
+        log('Please enter the Apps Script URL', 'error');
+        return;
+      }
+      
+      try {
+        log('Adding test entry...');
+        const testEntry = {
+          house: 'Compassion',
+          category: 'Sports',
+          subCategory: 'Athletics',
+          position: 1,
+          points: 30,
+          event: 'Test Event - ' + new Date().toLocaleTimeString(),
+          note: 'Testing backend connection',
+          date: new Date().toISOString()
+        };
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          body: JSON.stringify({action: 'addEntry', entry: testEntry}),
+          headers: { 'Content-Type': 'text/plain' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+          log(`Error: ${result.error}`, 'error');
+        } else {
+          log(`Entry added successfully! ID: ${result.id}`, 'success');
+        }
+      } catch (err) {
+        log(`Failed to add entry: ${err.message}`, 'error');
+      }
+    }
+    
+    async function testGetEntries() {
+      const url = getUrl();
+      if (!url) {
+        log('Please enter the Apps Script URL', 'error');
+        return;
+      }
+      
+      try {
+        log('Fetching entries...');
+        const response = await fetch(`${url}?action=getEntries`);
+        const data = await response.json();
+        
+        if (data.error) {
+          log(`Error: ${data.error}`, 'error');
+        } else {
+          log(`Found ${data.length} entries:`, 'success');
+          console.log(data);
+        }
+      } catch (err) {
+        log(`Failed to fetch entries: ${err.message}`, 'error');
+      }
+    }
+    
+    async function testReset() {
+      const url = getUrl();
+      if (!url) {
+        log('Please enter the Apps Script URL', 'error');
+        return;
+      }
+      
+      if (!confirm('This will delete ALL data. Are you sure?')) {
+        return;
+      }
+      
+      try {
+        log('Resetting all data...');
+        const response = await fetch(url, {
+          method: 'POST',
+          body: JSON.stringify({action: 'resetAll'}),
+          headers: { 'Content-Type': 'text/plain' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+          log(`Error: ${result.error}`, 'error');
+        } else {
+          log('All data has been reset!', 'success');
+        }
+      } catch (err) {
+        log(`Failed to reset: ${err.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

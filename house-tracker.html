@@ -1,0 +1,3504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viva House Championship Tracker</title>
+<script src="xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --compassion: #22C55E;
+    --compassion-bg: rgba(34,197,94,0.12);
+    --courage: #EF4444;
+    --courage-bg: rgba(239,68,68,0.12);
+    --honesty: #3B82F6;
+    --honesty-bg: rgba(59,130,246,0.12);
+    --loyalty: #EAB308;
+    --loyalty-bg: rgba(234,179,8,0.12);
+    --truth: #8B5CF6;
+    --truth-bg: rgba(139,92,246,0.12);
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --card: rgba(30,41,59,0.7);
+    --card2: #1e293b;
+    --card3: #334155;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --gold: #fbbf24;
+    --silver: #e2e8f0;
+    --bronze: #f59e0b;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --glass: rgba(15,23,42,0.6);
+    --border: rgba(148,163,184,0.1);
+    --shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(56,189,248,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(129,140,248,0.06) 0%, transparent 50%);
+    z-index: -1;
+    animation: bgPulse 15s ease-in-out infinite alternate;
+  }
+
+  @keyframes bgPulse {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(-3%,3%) scale(1.05); }
+  }
+
+  /* LOGIN SCREEN */
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .login-overlay.hidden {
+    display: none;
+  }
+
+  .login-card {
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow);
+  }
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .login-logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, var(--gold), var(--accent));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--bg);
+  }
+
+  .login-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .login-subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .login-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--card2);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .login-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.1);
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .login-btn:hover {
+    background: #7dd3fc;
+    transform: translateY(-1px);
+  }
+
+  .login-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .login-error {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    text-align: center;
+    display: none;
+  }
+
+  .login-error.show {
+    display: block;
+  }
+
+  .login-footer {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  /* USER INFO IN HEADER */
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--bg);
+    font-size: 0.9rem;
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .user-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .user-role {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .role-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .role-admin {
+    background: rgba(251,191,36,0.15);
+    color: var(--gold);
+  }
+
+  .role-user {
+    background: rgba(56,189,248,0.15);
+    color: var(--accent);
+  }
+
+  /* HEADER */
+  .header {
+    background: rgba(15,23,42,0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 30px;
+    height: 70px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .logo { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--gold), var(--accent));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--bg);
+  }
+
+  .logo h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+  .logo h1 span { color: var(--accent); }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: #7dd3fc; box-shadow: 0 0 20px rgba(56,189,248,0.3); }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--card3); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .btn-danger:hover { background: rgba(239,68,68,0.25); }
+  .btn-success { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+  .btn-success:hover { background: rgba(34,197,94,0.25); }
+  .btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 8px; }
+  .btn-icon { width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 30px;
+    background: rgba(15,23,42,0.4);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  .nav-tab:hover { color: var(--text); background: var(--card); }
+  .nav-tab.active { color: var(--accent); background: rgba(56,189,248,0.1); }
+
+  .container { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+  .view { display: none; animation: fadeIn 0.3s ease; }
+  .view.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.3s;
+  }
+
+  .card:hover { border-color: rgba(56,189,248,0.2); }
+
+  /* PODIUM */
+  .podium-section { margin-bottom: 40px; }
+
+  .podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 30px 0;
+  }
+
+  .podium-spot {
+    text-align: center;
+    border-radius: 16px;
+    padding: 24px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .podium-spot:hover { transform: translateY(-8px); }
+
+  .podium-spot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .spot-1 {
+    width: 220px;
+    min-height: 260px;
+    background: linear-gradient(180deg, rgba(251,191,36,0.15) 0%, var(--card2) 100%);
+    border: 2px solid rgba(251,191,36,0.4);
+    order: 2;
+    z-index: 2;
+    transform: scale(1.05);
+  }
+
+  .spot-2 {
+    width: 180px;
+    min-height: 210px;
+    background: linear-gradient(180deg, rgba(226,232,240,0.12) 0%, var(--card2) 100%);
+    border: 2px solid rgba(226,232,240,0.3);
+    order: 1;
+  }
+
+  .spot-3 {
+    width: 170px;
+    min-height: 180px;
+    background: linear-gradient(180deg, rgba(245,158,11,0.12) 0%, var(--card2) 100%);
+    border: 2px solid rgba(245,158,11,0.3);
+    order: 3;
+  }
+
+  .medal {
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+  }
+
+  .podium-house-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .podium-points {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .podium-points-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .podium-bar {
+    height: 10px;
+    border-radius: 5px;
+    margin-top: 16px;
+    transition: width 1s ease;
+  }
+
+  .podium-categories {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .podium-cat {
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+
+  .stat-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+
+  .stat-box::after { background: linear-gradient(90deg, var(--compassion), var(--courage), var(--honesty), var(--loyalty), var(--truth)); }
+
+  .stat-house {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .stat-total {
+    font-size: 2rem;
+    font-weight: 900;
+  }
+
+  .stat-bar {
+    height: 4px;
+    background: var(--card3);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* HOUSE DETAILS */
+  .house-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .house-detail-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .house-detail-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+  }
+
+  .house-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .house-detail-name {
+    font-size: 1.3rem;
+    font-weight: 800;
+  }
+
+  .house-detail-rank {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .house-detail-total {
+    font-size: 2.8rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .category-bars { display: flex; flex-direction: column; gap: 10px; }
+
+  .cat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cat-bar-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+  }
+
+  .cat-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--card3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .cat-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  .cat-bar-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    width: 35px;
+    text-align: right;
+  }
+
+  /* COMPARISON TABLE */
+  .comparison-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .comparison-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    background: var(--card2);
+    font-weight: 700;
+  }
+
+  .comparison-table td {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .comparison-table tr:hover td { background: rgba(56,189,248,0.03); }
+
+  .comparison-table .cell-total {
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .rank-1 { background: rgba(251,191,36,0.15); color: var(--gold); }
+  .rank-2 { background: rgba(226,232,240,0.15); color: var(--silver); }
+  .rank-3 { background: rgba(245,158,11,0.15); color: var(--bronze); }
+
+  /* CHARTS */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .chart-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  canvas { width: 100% !important; max-height: 300px; }
+
+  .donut-container { display: flex; align-items: center; gap: 30px; }
+
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
+
+  .donut-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+
+  .donut-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .donut-label { flex: 1; color: var(--muted); }
+  .donut-value { font-weight: 700; }
+
+  /* AWARDS */
+  .awards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .award-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .award-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+  .award-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .award-winner {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .award-detail {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* HISTORY */
+  .history-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .filter-chip:hover { border-color: var(--accent); color: var(--text); }
+  .filter-chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  .search-box {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: inherit;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-box:focus { border-color: var(--accent); }
+
+  .history-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .history-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    background: var(--card2);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .history-table th:hover { color: var(--text); }
+
+  .history-table td {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .history-table tr:hover td { background: rgba(56,189,248,0.03); }
+
+  .house-tag {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .points-positive { color: var(--success); font-weight: 700; }
+  .points-negative { color: var(--danger); font-weight: 700; }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0;
+    transition: all 0.2s;
+  }
+
+  tr:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { color: var(--danger); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.5; }
+  .empty-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+
+  /* MONTHLY VIEW */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .month-display {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 160px;
+    text-align: center;
+  }
+
+  .month-picker {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .month-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .month-chip:hover { border-color: var(--accent); color: var(--text); }
+  .month-chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .month-chip.has-data { border-color: rgba(56,189,248,0.4); }
+
+  .monthly-podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 30px 0;
+  }
+
+  .monthly-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .monthly-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow);
+    animation: modalIn 0.3s ease;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-header h2 { font-size: 1.15rem; font-weight: 700; }
+
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--card3);
+    border: none;
+    color: var(--muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover { background: var(--danger); color: white; }
+
+  .modal-body { padding: 24px; }
+
+  .form-group { margin-bottom: 18px; }
+
+  .form-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .form-select, .form-input, .form-textarea {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--card2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .form-select:focus, .form-input:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.1);
+  }
+
+  .form-textarea { resize: vertical; min-height: 70px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .form-helper {
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  /* TOAST */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(10px);
+  }
+
+  .toast-success { background: rgba(34,197,94,0.9); color: #052e16; }
+  .toast-error { background: rgba(239,68,68,0.9); color: #450a0a; }
+  .toast-info { background: rgba(56,189,248,0.9); color: #0c4a6e; }
+
+  @keyframes toastIn { from { opacity:0; transform: translateX(100px); } to { opacity:1; transform: translateX(0); } }
+  @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateY(10px); } }
+
+  /* CONFIRM DIALOG */
+  .confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 150;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .confirm-overlay.active { display: flex; }
+
+  .confirm-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+
+  .confirm-icon { font-size: 3rem; margin-bottom: 12px; }
+  .confirm-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .confirm-text { font-size: 0.9rem; color: var(--muted); margin-bottom: 24px; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--card3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* RESPONSIVE */
+  @media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .header { padding: 0 15px; height: 60px; }
+    .logo h1 { font-size: 1rem; }
+    .header-actions { gap: 4px; }
+    .btn { padding: 7px 12px; font-size: 0.75rem; }
+    .nav-tabs { padding: 10px 15px; }
+    .container { padding: 16px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .podium { flex-direction: column; align-items: center; }
+    .podium-spot { order: unset !important; width: 100%; max-width: 280px; min-height: auto; }
+    .form-row { grid-template-columns: 1fr; }
+    .donut-container { flex-direction: column; }
+    .monthly-podium { flex-direction: column; align-items: center; }
+    .month-nav { flex-wrap: wrap; justify-content: flex-end; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .house-detail-grid { grid-template-columns: 1fr; }
+    .awards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">V</div>
+      <h1 class="login-title">House Tracker</h1>
+      <p class="login-subtitle">Sign in to access the tracker</p>
+    </div>
+    <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="login-error" id="loginError"></div>
+      <input type="text" class="login-input" id="loginUsername" placeholder="Username" required autocomplete="username">
+      <input type="password" class="login-input" id="loginPassword" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+    </form>
+    <div class="login-footer">
+      Default admin: admin / admin123
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header" id="mainHeader" style="display:none">
+  <div class="logo">
+    <img src="VIVAA.png" alt="Viva Logo" style="height:42px;width:42px;border-radius:12px;object-fit:cover">
+    <h1><span>VIVA THE SCHOOL</span> INTER HOUSE POINTS TRACKER</h1>
+  </div>
+  <div class="header-actions">
+    <div class="user-info" id="userInfo">
+      <div class="user-details">
+        <span class="user-name" id="userName"></span>
+        <span class="user-role" id="userRole"></span>
+      </div>
+      <div class="user-avatar" id="userAvatar"></div>
+    </div>
+    <span id="saveIndicator" style="font-size:0.7rem;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-ghost" onclick="downloadBackup()" title="Download Backup">Backup</button>
+    <label class="btn btn-ghost" style="cursor:pointer" title="Restore Backup">
+      Restore <input type="file" accept=".json" style="display:none" onchange="restoreBackup(event)">
+    </label>
+    <button class="btn btn-primary admin-only" onclick="openModal('add')">+ Add Points</button>
+    <button class="btn btn-ghost admin-only" onclick="openModal('bulk')">Bulk</button>
+    <button class="btn btn-ghost" onclick="exportCSV()" title="Export CSV">Export</button>
+    <button class="btn btn-danger btn-icon admin-only" onclick="confirmReset()" title="Reset All">Reset</button>
+    <button class="btn btn-ghost" onclick="handleLogout()" title="Logout">Logout</button>
+  </div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs" id="navTabs">
+  <button class="nav-tab active" data-view="dashboard">Dashboard</button>
+  <button class="nav-tab" data-view="import">Excel Import</button>
+  <button class="nav-tab" data-view="houses">Houses</button>
+  <button class="nav-tab" data-view="comparison">Comparison</button>
+  <button class="nav-tab" data-view="charts">Analytics</button>
+  <button class="nav-tab" data-view="monthly">Monthly</button>
+  <button class="nav-tab" data-view="awards">Awards</button>
+  <button class="nav-tab" data-view="history">History</button>
+  <button class="nav-tab admin-only" data-view="users">Users</button>
+</div>
+
+<!-- MAIN CONTAINER -->
+<div class="container">
+
+  <!-- DASHBOARD VIEW -->
+  <div class="view active" id="dashboardView">
+    <div class="podium-section">
+      <div class="section-header">
+        <div class="section-title">Championship Standings (Cumulative)</div>
+        <div style="font-size:0.8rem;color:var(--muted)" id="seasonLabel">Season 2025-26</div>
+      </div>
+      <div class="podium" id="podium"></div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+
+  <!-- MONTHLY VIEW -->
+  <div class="view" id="monthlyView">
+    <div class="section-header">
+      <div class="section-title">Monthly Statistics</div>
+      <div class="month-nav">
+        <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)" id="monthPrev">◀</button>
+        <div class="month-display" id="monthDisplay"></div>
+        <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)" id="monthNext">▶</button>
+      </div>
+    </div>
+    <div class="month-picker" id="monthPicker"></div>
+    <div class="monthly-podium" id="monthlyPodium"></div>
+    <div class="stats-grid" id="monthlyStatsGrid"></div>
+    <div style="margin-top:20px">
+      <div class="section-header">
+        <div class="section-title">Monthly Category Breakdown</div>
+      </div>
+      <table class="comparison-table" id="monthlyComparisonTable"></table>
+    </div>
+    <div style="margin-top:20px">
+      <div class="section-header">
+        <div class="section-title">Monthly Entry Log</div>
+      </div>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>House</th>
+            <th>Category</th>
+            <th>Sub-Category</th>
+            <th>Event</th>
+            <th>Points</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyHistoryBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- IMPORT VIEW -->
+  <div class="view" id="importView">
+    <div class="section-header">
+      <div class="section-title">Excel Import — Academic Marks</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">How it works</div>
+      <div style="font-size:0.78rem;color:var(--muted);line-height:1.6">
+        Upload an Excel/CSV file with student marks. Columns: Name, House, Class, Section, and subject marks.<br>
+        Houses are ranked by <b>per-class average</b> — each class contributes equally regardless of student count.
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">Download Template</button>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px">
+      <div id="dropZone" style="border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all 0.3s">
+        <div style="font-size:2rem;margin-bottom:8px">📊</div>
+        <div style="font-size:1rem;font-weight:600;margin-bottom:6px">Drop Excel file here or click to browse</div>
+        <div style="font-size:0.8rem;color:var(--muted)">Supports .xlsx, .xls, .csv</div>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none">
+      </div>
+      <div id="fileInfo" style="display:none;margin-top:16px;padding:12px;background:var(--card2);border-radius:10px"></div>
+
+      <div id="importActions" style="display:none;margin-top:16px;grid-template-columns:1fr 1fr;gap:12px;align-items:end"></div>
+
+      <div id="importBtn" style="display:none;margin-top:16px;text-align:center">
+        <button class="btn btn-success" onclick="importData()" style="width:100%;padding:12px">Import & Calculate Points</button>
+      </div>
+
+      <div id="houseResults" style="display:none;margin-top:24px">
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:16px">Results — Per-Class Averaged</div>
+        <div id="resultsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px"></div>
+      </div>
+    </div>
+
+    <div id="studentDataSection" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:0.9rem;font-weight:700">Student Data</div>
+      </div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <div id="studentDataTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOUSES VIEW -->
+  <div class="view" id="housesView">
+    <div class="section-header">
+      <div class="section-title">House Details</div>
+    </div>
+    <div class="house-detail-grid" id="houseDetails"></div>
+  </div>
+
+  <!-- COMPARISON VIEW -->
+  <div class="view" id="comparisonView">
+    <div class="section-header">
+      <div class="section-title">Category Comparison</div>
+    </div>
+    <table class="comparison-table" id="comparisonTable"></table>
+  </div>
+
+  <!-- CHARTS VIEW -->
+  <div class="view" id="chartsView">
+    <div class="section-header">
+      <div class="section-title">Analytics</div>
+    </div>
+    <div class="charts-grid" id="chartsGrid"></div>
+  </div>
+
+  <!-- AWARDS VIEW -->
+  <div class="view" id="awardsView">
+    <div class="section-header">
+      <div class="section-title">House Awards & Records</div>
+    </div>
+    <div class="awards-grid" id="awardsGrid"></div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div class="view" id="historyView">
+    <div class="section-header">
+      <div class="section-title">Activity Log</div>
+    </div>
+    <div class="history-controls">
+      <div class="filter-chips" id="filterChips"></div>
+      <input type="text" class="search-box" placeholder="Search events..." id="searchBox" oninput="renderHistory()">
+    </div>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th onclick="sortHistory('date')">Date ↕</th>
+          <th onclick="sortHistory('house')">House ↕</th>
+          <th onclick="sortHistory('category')">Category ↕</th>
+          <th onclick="sortHistory('subCategory')">Sub-Category</th>
+          <th onclick="sortHistory('event')">Event</th>
+          <th onclick="sortHistory('points')">Points ↕</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+
+  <!-- USERS VIEW -->
+  <div class="view" id="usersView">
+    <div class="section-header">
+      <div class="section-title">User Management</div>
+      <button class="btn btn-primary" onclick="openModal('users')">+ Add User</button>
+    </div>
+    <div class="card">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ADD POINTS MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Points</h2>
+      <button class="modal-close" onclick="closeModal('add')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">House</label>
+          <select class="form-select" id="addHouse"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="addCategory" onchange="updateAddSub()"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sub-Category</label>
+          <select class="form-select" id="addSubCategory" onchange="updateAddPoints()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Position</label>
+          <select class="form-select" id="addPosition" onchange="updateAddPoints()">
+            <option value="1">1st Place</option>
+            <option value="2">2nd Place</option>
+            <option value="3">3rd Place</option>
+            <option value="4">4th Place</option>
+            <option value="5">5th Place</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Points</label>
+        <input type="number" class="form-input" id="addPoints" placeholder="Auto-calculated">
+        <div class="form-helper" id="addPointsHelper">Points auto-calculated based on category</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Event / Description</label>
+        <input type="text" class="form-input" id="addEvent" placeholder="e.g. Annual Sports Day">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <textarea class="form-textarea" id="addNote" placeholder="Any additional details..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add')">Cancel</button>
+      <button class="btn btn-success" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK ADD MODAL -->
+<div class="modal-overlay" id="bulkModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Bulk Add Points</h2>
+      <button class="modal-close" onclick="closeModal('bulk')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="bulkCategory" onchange="updateBulkSub()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sub-Category</label>
+          <select class="form-select" id="bulkSubCategory"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Event / Description</label>
+        <input type="text" class="form-input" id="bulkEvent" placeholder="e.g. Inter-House Quiz Competition">
+      </div>
+      <div id="bulkInputs"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulk')">Cancel</button>
+      <button class="btn btn-success" onclick="saveBulk()">Save All</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirmDialog">
+  <div class="confirm-box">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title">Reset All Data?</div>
+    <div class="confirm-text">This will permanently delete all entries. This action cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" onclick="resetAll()">Yes, Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOUSE DETAIL MODAL -->
+<div class="modal-overlay" id="houseAcadModal">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <div class="modal-title" id="houseAcadTitle">House Details</div>
+      <button class="modal-close" onclick="closeHouseAcad()">✕</button>
+    </div>
+    <div id="houseDetailFilters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
+    <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+      <div id="houseAcadTable"></div>
+    </div>
+    <div id="houseAcadSummary" style="margin-top:16px;font-size:0.8rem;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- USER MANAGEMENT MODAL -->
+<div class="modal-overlay" id="usersModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>User Management</h2>
+      <button class="modal-close" onclick="closeModal('users')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:20px">
+        <button class="btn btn-primary" onclick="showAddUserForm()">+ Add New User</button>
+      </div>
+      <div id="usersList"></div>
+      <div id="addUserForm" style="display:none;margin-top:20px;padding:20px;background:var(--card2);border-radius:12px">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">Add New User</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="newUsername" placeholder="Username">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="newFullName" placeholder="Full Name">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="newPassword" placeholder="Password">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select class="form-select" id="newRole">
+              <option value="user">User (View Only)</option>
+              <option value="admin">Admin (Full Access)</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-ghost" onclick="hideAddUserForm()">Cancel</button>
+          <button class="btn btn-success" onclick="addNewUser()">Add User</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="passwordModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2>Change Password</h2>
+      <button class="modal-close" onclick="closeModal('password')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input type="password" class="form-input" id="currentPassword" placeholder="Current Password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" class="form-input" id="newPasswordInput" placeholder="New Password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password</label>
+        <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm New Password">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('password')">Cancel</button>
+      <button class="btn btn-success" onclick="changeMyPassword()">Change Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== CONFIGURATION =====
+// IMPORTANT: Replace this with your deployed Google Apps Script URL
+// To get this URL: Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmbLK4pkcX35D6aWoOIG9XZIUG_HwWznwbc40zKvLfWQtqCDNiHXTavN4HEFBNnX8l/exec';
+
+// ===== CONSTANTS =====
+const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
+const HCLASS = { Compassion:'compassion', Courage:'courage', Honesty:'honesty', Loyalty:'loyalty', Truth:'truth' };
+const HCOLOR = { Compassion:'#22C55E', Courage:'#EF4444', Honesty:'#3B82F6', Loyalty:'#EAB308', Truth:'#8B5CF6' };
+const HBGCOLOR = { Compassion:'rgba(34,197,94,0.12)', Courage:'rgba(239,68,68,0.12)', Honesty:'rgba(59,130,246,0.12)', Loyalty:'rgba(234,179,8,0.12)', Truth:'rgba(139,92,246,0.12)' };
+
+const CATS = {
+  'Academics': { points:[30,25,20,15,10], subs:['Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'], color:'#f87171' },
+  'Sports': { points:[7,5,3,2,1], subs:['Indoor Games','Outdoor Games','Cross Country','Athletics','Swimming'], color:'#fbbf24' },
+  'Co-Curricular': { points:[10,8,6,4,2], subs:['Quiz','Spell Bee','Talent Tapping','Declamation'], color:'#34d399' },
+  'Unique Contributions': { points:[15,12,9,6,3], subs:['District','State','National','Volunteering'], color:'#60a5fa' },
+  'Disciplinary': { points:[15,12,9,6,3], subs:['Best Discipline','Attendance Bonus','Code of Conduct'], color:'#c084fc' }
+};
+
+const SPORTS_PTS = {
+  'Indoor Games': [7,5,3,2,1], 'Outdoor Games': [7,5,3,2,1],
+  'Cross Country': [30,25,20,15,10], 'Athletics': [30,25,20,15,10], 'Swimming': [20,15,10,5,2]
+};
+
+const UNIQUE_PTS = {
+  'District': [8,6,4,2], 'State': [20,16,12,8], 'National': [32,26,24,20], 'Volunteering': [2]
+};
+
+const DISCIPLINARY_PTS = {
+  'Best Discipline': [2,0,0,0,0], 'Attendance Bonus': [1,-1,0,0,0], 'Code of Conduct': [-2,-4,-10,0,0]
+};
+
+// ===== API HELPERS =====
+async function apiGet(action, params = {}) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  
+  const response = await fetch(url);
+  const data = await response.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+async function apiPost(data) {
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'text/plain' }
+  });
+  const result = await response.json();
+  if(result.error) throw new Error(result.error);
+  return result;
+}
+
+// ===== STATE =====
+let entries = [];
+let savedMapping = null;
+let savedFormState = {};
+let activeFilter = 'All';
+let sortField = 'date';
+let sortAsc = false;
+let activeView = 'dashboard';
+
+// ===== USER STATE =====
+let currentUser = null;
+let users = [];
+
+// ===== MONTHLY STATE =====
+let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+// ===== EXCEL IMPORT STATE =====
+let rawExcelData = [];
+let columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
+let studentData = [];
+
+// ===== AUTHENTICATION =====
+function handleLogin(event) {
+  event.preventDefault();
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  const errorDiv = document.getElementById('loginError');
+  const loginBtn = document.getElementById('loginBtn');
+  
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Signing in...';
+  errorDiv.classList.remove('show');
+  
+  apiPost({action: 'login', username, password})
+    .then(result => {
+      if(result.success) {
+        currentUser = result.user;
+        localStorage.setItem('vivaHouseUser', JSON.stringify(currentUser));
+        showMainApp();
+        initializeApp();
+      } else {
+        errorDiv.textContent = result.error || 'Login failed';
+        errorDiv.classList.add('show');
+      }
+    })
+    .catch(err => {
+      errorDiv.textContent = 'Connection error: ' + err.message;
+      errorDiv.classList.add('show');
+    })
+    .finally(() => {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign In';
+    });
+}
+
+function handleLogout() {
+  if(!confirm('Are you sure you want to logout?')) return;
+  currentUser = null;
+  localStorage.removeItem('vivaHouseUser');
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('mainHeader').style.display = 'none';
+}
+
+function showMainApp() {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('mainHeader').style.display = 'flex';
+  updateUserInfo();
+  applyRoleRestrictions();
+}
+
+function updateUserInfo() {
+  if(!currentUser) return;
+  
+  document.getElementById('userName').textContent = currentUser.fullName || currentUser.username;
+  document.getElementById('userRole').textContent = currentUser.role;
+  document.getElementById('userAvatar').textContent = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+}
+
+function applyRoleRestrictions() {
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  
+  // Hide/show admin-only elements
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? 'flex' : 'none';
+  });
+  
+  // Disable history delete buttons for non-admins
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.style.display = isAdmin ? 'block' : 'none';
+  });
+}
+
+function isAdmin() {
+  return currentUser && currentUser.role === 'admin';
+}
+
+// ===== INITIALIZATION =====
+async function initializeApp() {
+  try {
+    showSaving();
+    
+    // Load data from Google Sheets
+    const [entriesData, studentsData, configData] = await Promise.all([
+      apiGet('getEntries'),
+      apiGet('getStudents'),
+      apiGet('getConfig')
+    ]);
+    
+    entries = entriesData;
+    studentData = studentsData;
+    
+    if(configData.columnMapping) {
+      savedMapping = JSON.parse(configData.columnMapping);
+      columnMapping = savedMapping;
+    }
+    if(configData.formState) {
+      savedFormState = JSON.parse(configData.formState);
+    }
+    
+    // Load users for admin
+    if(isAdmin()) {
+      await loadUsers();
+    }
+    
+    showSaved();
+    populateSelects();
+    restoreFormState();
+    updateAddSub();
+    render();
+  } catch(err) {
+    showToast('Failed to load data: ' + err.message, 'error');
+    console.error('Init error:', err);
+  }
+}
+
+function showSaving() {
+  const el = document.getElementById('saveIndicator');
+  if(!el) return;
+  el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block"></span> Saving...';
+}
+
+function showSaved() {
+  const el = document.getElementById('saveIndicator');
+  if(!el) return;
+  el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block"></span> Saved';
+}
+
+function showLoading() {
+  const el = document.getElementById('saveIndicator');
+  if(!el) return;
+  el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span> Loading...';
+}
+
+async function saveData(key, data) {
+  showSaving();
+  try {
+    // Save to Google Sheets via Apps Script
+    if(key === 'vivaHouseMapping') {
+      await apiPost({action: 'updateConfig', config: {columnMapping: JSON.stringify(data)}});
+    }
+    setTimeout(showSaved, 300);
+  } catch(e) {
+    showToast('Failed to save: ' + e.message, 'error');
+  }
+}
+
+async function saveAllState() {
+  showSaving();
+  // Entries are saved individually via API calls, no need to save all at once
+  setTimeout(showSaved, 300);
+}
+
+async function persistFormState() {
+  const state = {
+    addHouse: document.getElementById('addHouse')?.value,
+    addCategory: document.getElementById('addCategory')?.value
+  };
+  await apiPost({action: 'updateConfig', config: {formState: JSON.stringify(state)}});
+}
+
+function restoreFormState() {
+  if(savedFormState.addHouse) { const el = document.getElementById('addHouse'); if(el) el.value = savedFormState.addHouse; }
+  if(savedFormState.addCategory) { const el = document.getElementById('addCategory'); if(el) el.value = savedFormState.addCategory; }
+}
+
+async function downloadBackup() {
+  showSaving();
+  try {
+    const [entriesData, studentsData] = await Promise.all([
+      apiGet('getEntries'),
+      apiGet('getStudents')
+    ]);
+    
+    const backup = {
+      version: 2,
+      timestamp: new Date().toISOString(),
+      entries: entriesData,
+      students: studentsData,
+      columnMapping: columnMapping,
+      view: activeView
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `house-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    showSaved();
+    showToast('Backup downloaded', 'success');
+  } catch(err) {
+    showToast('Failed to create backup: ' + err.message, 'error');
+  }
+}
+
+async function restoreBackup(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if(!backup.entries || !Array.isArray(backup.entries)) {
+        showToast('Invalid backup file', 'error');
+        return;
+      }
+      if(confirm(`Restore backup from ${backup.timestamp}? This will replace all current data.`)) {
+        showSaving();
+        
+        // Reset and restore entries
+        await apiPost({action: 'resetAll'});
+        
+        if(backup.entries.length > 0) {
+          await apiPost({action: 'addEntries', entries: backup.entries});
+        }
+        
+        if(backup.students && backup.students.length > 0) {
+          await apiPost({action: 'addStudents', students: backup.students});
+        }
+        
+        if(backup.columnMapping) {
+          await apiPost({action: 'updateConfig', config: {columnMapping: JSON.stringify(backup.columnMapping)}});
+          columnMapping = backup.columnMapping;
+        }
+        
+        // Reload data
+        await initializeApp();
+        showSaved();
+        showToast(`Restored ${backup.entries.length} entries`, 'success');
+      }
+    } catch(err) {
+      showToast('Failed to restore backup: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== HELPERS =====
+function getHouseTotal(h) { return entries.filter(e=>e.house===h).reduce((s,e)=>s+e.points,0); }
+function getCatTotal(h,c) { return entries.filter(e=>e.house===h&&e.category===c).reduce((s,e)=>s+e.points,0); }
+function getSorted() { return HOUSES.map(h=>({house:h,total:getHouseTotal(h)})).sort((a,b)=>b.total-a.total); }
+function getMaxCat(h) { const cats=Object.keys(CATS); let max=0,c=''; cats.forEach(c2=>{const v=getCatTotal(h,c2);if(v>max){max=v;c=c2;}}); return {cat:c,val:max}; }
+
+// ===== MONTHLY HELPERS =====
+function getEntriesForMonth(ym) {
+  return entries.filter(e => e.date && e.date.slice(0, 7) === ym);
+}
+
+function getHouseTotalMonth(h, ym) {
+  return getEntriesForMonth(ym).filter(e => e.house === h).reduce((s, e) => s + e.points, 0);
+}
+
+function getCatTotalMonth(h, c, ym) {
+  return getEntriesForMonth(ym).filter(e => e.house === h && e.category === c).reduce((s, e) => s + e.points, 0);
+}
+
+function getSortedMonth(ym) {
+  return HOUSES.map(h => ({ house: h, total: getHouseTotalMonth(h, ym) })).sort((a, b) => b.total - a.total);
+}
+
+function getAvailableMonths() {
+  const months = new Set();
+  entries.forEach(e => {
+    if (e.date) months.add(e.date.slice(0, 7));
+  });
+  return [...months].sort().reverse();
+}
+
+function getMonthLabel(ym) {
+  const [y, m] = ym.split('-');
+  const date = new Date(parseInt(y), parseInt(m) - 1);
+  return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+function changeMonth(delta) {
+  const parts = currentMonth.split('-');
+  let y = parseInt(parts[0]);
+  let m = parseInt(parts[1]) + delta;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  currentMonth = `${y}-${String(m).padStart(2, '0')}`;
+  renderMonthlyStats();
+}
+
+function selectMonth(ym) {
+  currentMonth = ym;
+  renderMonthlyStats();
+}
+function calcPoints(cat,sub,pos) {
+  if(cat==='Sports'&&SPORTS_PTS[sub]) return SPORTS_PTS[sub][pos-1]||0;
+  if(cat==='Unique Contributions'&&sub==='Volunteering') return 2;
+  if(cat==='Unique Contributions'&&UNIQUE_PTS[sub]) return UNIQUE_PTS[sub][pos-1]||0;
+  if(cat==='Disciplinary'&&DISCIPLINARY_PTS[sub]) return DISCIPLINARY_PTS[sub][pos-1]||0;
+  return CATS[cat]?.points[pos-1]||0;
+}
+
+// ===== RENDER FUNCTIONS =====
+function render() {
+  renderDashboard();
+  renderHouseDetails();
+  renderComparison();
+  renderCharts();
+  renderMonthlyStats();
+  renderAwards();
+  renderHistory();
+  renderNavTabs();
+}
+
+function renderNavTabs() {
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === activeView);
+    // Hide admin-only tabs for non-admin users
+    if(t.classList.contains('admin-only')) {
+      t.style.display = isAdmin() ? 'block' : 'none';
+    }
+  });
+}
+
+function renderDashboard() {
+  const sorted = getSorted();
+  const maxPts = Math.max(...sorted.map(s=>s.total),1);
+
+  // Assign ranks (ties get same rank)
+  let ranks = [];
+  let prevTotal = null, prevRank = 0;
+  sorted.forEach((s, i) => {
+    if(s.total !== prevTotal) { prevRank = i + 1; prevTotal = s.total; }
+    ranks.push(prevRank);
+  });
+
+  // Podium: top 3 ranks, individual boxes
+  const podiumRanks = [1, 2, 3];
+  const podiumOrder = [];
+  podiumRanks.forEach(r => {
+    sorted.forEach((s, i) => {
+      if(ranks[i] === r) podiumOrder.push({...s, rank: r});
+    });
+  });
+
+  const spotClasses = ['spot-1', 'spot-2', 'spot-3'];
+  const medals = {1: '🥇', 2: '🥈', 3: '🥉'};
+
+  document.getElementById('podium').innerHTML = podiumOrder.map((item) => {
+    const rankIdx = item.rank - 1;
+    const catBreakdown = Object.keys(CATS).map(c =>
+      `<div class="podium-cat"><span>${c}</span><span>${getCatTotal(item.house,c)}</span></div>`
+    ).join('');
+    return `
+      <div class="podium-spot ${spotClasses[rankIdx]}">
+        <div class="medal">${medals[item.rank]}</div>
+        <div class="podium-house-name" style="color:${HCOLOR[item.house]}">${item.house}</div>
+        <div class="podium-points">${item.total}</div>
+        <div class="podium-points-label">Total Points</div>
+        <div class="podium-bar" style="width:${(item.total/maxPts)*100}%;background:${HCOLOR[item.house]}"></div>
+        <div class="podium-categories">${catBreakdown}</div>
+      </div>`;
+  }).join('');
+
+  // Stats cards
+  document.getElementById('statsGrid').innerHTML = sorted.map((h,i) => {
+    const best = getMaxCat(h.house);
+    return `
+      <div class="stat-box">
+        <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
+        <div class="stat-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" style="width:${(h.total/maxPts)*100}%;background:${HCOLOR[h.house]}"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+      </div>`;
+  }).join('');
+}
+
+function renderHouseDetails() {
+  const sorted = getSorted();
+  const maxPts = Math.max(...sorted.map(s=>s.total),1);
+  const cats = Object.keys(CATS);
+
+  document.getElementById('houseDetails').innerHTML = sorted.map((h,i) => {
+    const rankLabels = ['🏆 1st','🥈 2nd','🥉 3rd','4th','5th'];
+    const rankColors = ['rgba(251,191,36,0.2);color:#fbbf24','rgba(226,232,240,0.2);color:#e2e8f0','rgba(245,158,11,0.2);color:#f59e0b','rgba(148,163,184,0.2);color:#94a3b8','rgba(148,163,184,0.2);color:#94a3b8'];
+    const bars = cats.map(c => {
+      const v = getCatTotal(h.house,c);
+      const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;
+      return `
+        <div class="cat-bar-row">
+          <div class="cat-bar-label">${c}</div>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width:${pct}%;background:${CATS[c].color}"></div>
+          </div>
+          <div class="cat-bar-value" style="color:${CATS[c].color}">${v}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="house-detail-card" style="border-top:3px solid ${HCOLOR[h.house]}">
+        <div class="house-detail-header">
+          <div class="house-detail-name" style="color:${HCOLOR[h.house]}">${h.house}</div>
+          <div class="house-detail-rank" style="background:${rankColors[i].split(';')[0]};${rankColors[i].split(';')[1]}">${rankLabels[i]}</div>
+        </div>
+        <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
+        <div class="category-bars">${bars}</div>
+        ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderComparison() {
+  const sorted = getSorted();
+  const cats = Object.keys(CATS);
+  const catColors = cats.map(c => CATS[c].color);
+
+  let html = `
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>House</th>
+        ${cats.map(c=>`<th style="color:${CATS[c].color}">${c}</th>`).join('')}
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  sorted.forEach((h,i) => {
+    const rankBadge = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    html += `
+      <tr>
+        <td><span class="rank-badge ${rankBadge}">${i+1}</span></td>
+        <td><span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span></td>
+        ${cats.map(c=>`<td style="color:${CATS[c].color};font-weight:600">${getCatTotal(h.house,c)}</td>`).join('')}
+        <td class="cell-total" style="color:${HCOLOR[h.house]}">${h.total}</td>
+      </tr>`;
+  });
+
+  html += '</tbody>';
+  document.getElementById('comparisonTable').innerHTML = html;
+}
+
+function renderCharts() {
+  const sorted = getSorted();
+  const cats = Object.keys(CATS);
+  const canvas1 = document.createElement('canvas');
+  const canvas2 = document.createElement('canvas');
+  canvas1.id = 'barChart';
+  canvas2.id = 'donutChart';
+
+  document.getElementById('chartsGrid').innerHTML = `
+    <div class="chart-card">
+      <div class="chart-title">Total Points Comparison</div>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Points Distribution</div>
+      <div class="donut-container">
+        <canvas id="donutChart" width="200" height="200"></canvas>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1">
+      <div class="chart-title">Category Breakdown by House</div>
+      <canvas id="stackedChart"></canvas>
+    </div>`;
+
+  setTimeout(() => {
+    drawBarChart(sorted);
+    drawDonutChart(sorted);
+    drawStackedChart(sorted);
+  }, 50);
+}
+
+function drawBarChart(sorted) {
+  const canvas = document.getElementById('barChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 280 * dpr;
+  canvas.style.height = '280px';
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 280;
+
+  const maxPts = Math.max(...sorted.map(s=>s.total),1);
+  const barW = Math.min(60, (W - 80) / sorted.length - 16);
+  const chartH = H - 60;
+  const startX = (W - (barW + 16) * sorted.length) / 2;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(148,163,184,0.1)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i <= 5; i++) {
+    const y = 20 + (chartH / 5) * i;
+    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 10, y); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxPts * (5-i)/5), 35, y + 4);
+  }
+
+  // Bars
+  sorted.forEach((h,i) => {
+    const x = startX + i * (barW + 16);
+    const barH = (h.total / maxPts) * chartH;
+    const y = 20 + chartH - barH;
+
+    const grad = ctx.createLinearGradient(x, y, x, 20 + chartH);
+    grad.addColorStop(0, HCOLOR[h.house]);
+    grad.addColorStop(1, HCOLOR[h.house] + '33');
+    ctx.fillStyle = grad;
+
+    // Rounded top
+    const r = 6;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + barW - r, y);
+    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+    ctx.lineTo(x + barW, 20 + chartH);
+    ctx.lineTo(x, 20 + chartH);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.fill();
+
+    // Value
+    ctx.fillStyle = HCOLOR[h.house];
+    ctx.font = 'bold 13px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(h.total, x + barW/2, y - 8);
+
+    // Label
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Inter';
+    ctx.fillText(h.house.slice(0,6), x + barW/2, H - 10);
+  });
+}
+
+function drawDonutChart(sorted) {
+  const canvas = document.getElementById('donutChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 200 * dpr; canvas.height = 200 * dpr;
+  ctx.scale(dpr, dpr);
+
+  const total = sorted.reduce((s,h)=>s+h.total,0) || 1;
+  const cx = 100, cy = 100, r = 80, inner = 50;
+  let startAngle = -Math.PI/2;
+
+  sorted.forEach(h => {
+    const slice = (h.total / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+    ctx.arc(cx, cy, inner, startAngle + slice, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = HCOLOR[h.house];
+    ctx.fill();
+    startAngle += slice;
+  });
+
+  // Center text
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = 'bold 22px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(total, cx, cy + 3);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px Inter';
+  ctx.fillText('TOTAL', cx, cy + 18);
+
+  // Legend
+  document.getElementById('donutLegend').innerHTML = sorted.map(h => {
+    const pct = ((h.total/total)*100).toFixed(1);
+    return `<div class="donut-legend-item">
+      <div class="donut-dot" style="background:${HCOLOR[h.house]}"></div>
+      <span class="donut-label">${h.house}</span>
+      <span class="donut-value">${h.total} (${pct}%)</span>
+    </div>`;
+  }).join('');
+}
+
+function drawStackedChart(sorted) {
+  const canvas = document.getElementById('stackedChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 300 * dpr;
+  canvas.style.height = '300px';
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 300;
+
+  const cats = Object.keys(CATS);
+  const catColors = cats.map(c => CATS[c].color);
+  const maxStack = Math.max(...sorted.map(h => cats.reduce((s,c)=>s+getCatTotal(h,c),0)),1);
+  const barW = Math.min(70, (W - 80) / sorted.length - 16);
+  const chartH = H - 60;
+  const startX = (W - (barW + 16) * sorted.length) / 2;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(148,163,184,0.1)';
+  for(let i = 0; i <= 5; i++) {
+    const y = 20 + (chartH / 5) * i;
+    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 10, y); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxStack * (5-i)/5), 35, y + 4);
+  }
+
+  sorted.forEach((h,i) => {
+    const x = startX + i * (barW + 16);
+    let yOff = 20 + chartH;
+
+    cats.forEach((c,ci) => {
+      const v = getCatTotal(h.house,c);
+      const segH = (v / maxStack) * chartH;
+      yOff -= segH;
+
+      ctx.fillStyle = catColors[ci];
+      ctx.beginPath();
+      ctx.roundRect(x, yOff, barW, segH - 1, ci===cats.length-1 ? [0,0,6,6] : 0);
+      ctx.fill();
+
+      if(segH > 18) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(v, x + barW/2, yOff + segH/2 + 3);
+      }
+    });
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(h.house.slice(0,6), x + barW/2, H - 10);
+  });
+}
+
+function renderMonthlyStats() {
+  const monthEntries = getEntriesForMonth(currentMonth);
+  const sorted = getSortedMonth(currentMonth);
+  const maxPts = Math.max(...sorted.map(s => s.total), 1);
+  const cats = Object.keys(CATS);
+
+  // Update month display
+  document.getElementById('monthDisplay').textContent = getMonthLabel(currentMonth);
+
+  // Render month picker chips
+  const available = getAvailableMonths();
+  const allMonths = [];
+  if (entries.length > 0) {
+    const dates = entries.map(e => e.date).filter(Boolean).sort();
+    const earliest = dates[0].slice(0, 7);
+    const latest = dates[dates.length - 1].slice(0, 7);
+    let [ey, em] = earliest.split('-').map(Number);
+    const [ly, lm] = latest.split('-').map(Number);
+    while (ey < ly || (ey === ly && em <= lm)) {
+      allMonths.push(`${ey}-${String(em).padStart(2, '0')}`);
+      em++;
+      if (em > 12) { em = 1; ey++; }
+    }
+  }
+  if (allMonths.length === 0) allMonths.push(currentMonth);
+
+  document.getElementById('monthPicker').innerHTML = allMonths.map(ym => {
+    const hasData = available.includes(ym);
+    const isActive = ym === currentMonth;
+    return `<button class="month-chip ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''}" onclick="selectMonth('${ym}')">${getMonthLabel(ym)}</button>`;
+  }).join('');
+
+  if (monthEntries.length === 0) {
+    document.getElementById('monthlyPodium').innerHTML = '';
+    document.getElementById('monthlyStatsGrid').innerHTML = '';
+    document.getElementById('monthlyComparisonTable').innerHTML = '';
+    document.getElementById('monthlyHistoryBody').innerHTML = `<tr><td colspan="7"><div class="monthly-empty"><div class="monthly-empty-icon">📅</div><div style="font-weight:700;margin-bottom:4px">No entries for ${getMonthLabel(currentMonth)}</div><div style="color:var(--muted)">Add points or select a different month</div></div></td></tr>`;
+    return;
+  }
+
+  // Monthly podium
+  const podiumRanks = [1, 2, 3];
+  const podiumOrder = [];
+  let prevTotal = null, prevRank = 0;
+  const ranks = [];
+  sorted.forEach((s, i) => {
+    if (s.total !== prevTotal) { prevRank = i + 1; prevTotal = s.total; }
+    ranks.push(prevRank);
+  });
+  podiumRanks.forEach(r => {
+    sorted.forEach((s, i) => {
+      if (ranks[i] === r) podiumOrder.push({ ...s, rank: r });
+    });
+  });
+
+  const spotClasses = ['spot-1', 'spot-2', 'spot-3'];
+  const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+  document.getElementById('monthlyPodium').innerHTML = podiumOrder.map(item => {
+    const catBreakdown = cats.map(c =>
+      `<div class="podium-cat"><span>${c}</span><span>${getCatTotalMonth(item.house, c, currentMonth)}</span></div>`
+    ).join('');
+    return `
+      <div class="podium-spot ${spotClasses[item.rank - 1]}">
+        <div class="medal">${medals[item.rank]}</div>
+        <div class="podium-house-name" style="color:${HCOLOR[item.house]}">${item.house}</div>
+        <div class="podium-points">${item.total}</div>
+        <div class="podium-points-label">Points in ${getMonthLabel(currentMonth).split(' ')[0]}</div>
+        <div class="podium-bar" style="width:${(item.total / maxPts) * 100}%;background:${HCOLOR[item.house]}"></div>
+        <div class="podium-categories">${catBreakdown}</div>
+      </div>`;
+  }).join('');
+
+  // Monthly stats cards
+  document.getElementById('monthlyStatsGrid').innerHTML = sorted.map((h, i) => {
+    const best = cats.reduce((b, c) => {
+      const v = getCatTotalMonth(h.house, c, currentMonth);
+      return v > b.val ? { cat: c, val: v } : b;
+    }, { cat: '-', val: 0 });
+    return `
+      <div class="stat-box">
+        <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
+        <div class="stat-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" style="width:${(h.total / maxPts) * 100}%;background:${HCOLOR[h.house]}"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+      </div>`;
+  }).join('');
+
+  // Monthly comparison table
+  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CATS[c].color}">${c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  sorted.forEach((h, i) => {
+    const rankBadge = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    tableHtml += `<tr>
+      <td><span class="rank-badge ${rankBadge}">${i + 1}</span></td>
+      <td><span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span></td>
+      ${cats.map(c => `<td style="color:${CATS[c].color};font-weight:600">${getCatTotalMonth(h.house, c, currentMonth)}</td>`).join('')}
+      <td class="cell-total" style="color:${HCOLOR[h.house]}">${h.total}</td>
+    </tr>`;
+  });
+  tableHtml += '</tbody>';
+  document.getElementById('monthlyComparisonTable').innerHTML = tableHtml;
+
+  // Monthly entry log
+  const sortedEntries = [...monthEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  document.getElementById('monthlyHistoryBody').innerHTML = sortedEntries.map(e => `
+    <tr>
+      <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+      <td><span class="house-tag" style="background:${HBGCOLOR[e.house]};color:${HCOLOR[e.house]}">${e.house}</span></td>
+      <td>${e.category}</td>
+      <td style="color:var(--muted)">${e.subCategory || '-'}</td>
+      <td>${e.event || '-'}</td>
+      <td class="${e.points >= 0 ? 'points-positive' : 'points-negative'}">${e.points >= 0 ? '+' : ''}${e.points}</td>
+      <td style="color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || ''}</td>
+    </tr>`).join('');
+}
+
+function renderAwards() {
+  const sorted = getSorted();
+  const cats = Object.keys(CATS);
+  const totalEntries = entries.length;
+  const totalPoints = entries.reduce((s,e)=>s+e.points,0);
+
+  // Category leaders
+  const catLeaders = cats.map(c => {
+    const best = sorted.reduce((b,h) => {
+      const v = getCatTotal(h.house,c);
+      return v > b.val ? {house:h.house,val:v} : b;
+    }, {house:'-',val:0});
+    return { cat: c, ...best, color: CATS[c].color };
+  });
+
+  // Best single entry
+  const bestEntry = entries.reduce((b,e) => e.points > (b?.points||0) ? e : b, null);
+
+  // Most active house
+  const houseCounts = HOUSES.map(h => ({house:h, count:entries.filter(e=>e.house===h).length}));
+  const mostActive = houseCounts.reduce((a,b) => b.count > a.count ? b : a, {house:'-',count:0});
+
+  const awards = [
+    { icon:'🏆', title:'Championship Leader', winner:sorted[0]?.house||'-', detail:`${sorted[0]?.total||0} total points` },
+    { icon:'📊', title:'Total Entries', winner:totalEntries, detail:`${totalPoints} total points awarded` },
+    { icon:'🎯', title:'Most Active House', winner:mostActive.house, detail:`${mostActive.count} entries` },
+    { icon:'⭐', title:'Highest Single Score', winner:bestEntry?.house||'-', detail:bestEntry?`${bestEntry.points} pts — ${bestEntry.event||bestEntry.category}`:'No entries yet' },
+    ...catLeaders.map(cl => ({
+      icon: cl.cat==='Academics'?'📚':cl.cat==='Sports'?'🏅':cl.cat==='Co-Curricular'?'🎨':cl.cat==='Unique Contributions'?'🌟':'⚖️',
+      title:`${cl.cat} Leader`,
+      winner: cl.house,
+      detail: `${cl.val} points`,
+      color: cl.color
+    }))
+  ];
+
+  document.getElementById('awardsGrid').innerHTML = awards.map(a => `
+    <div class="award-card">
+      <div class="award-icon">${a.icon}</div>
+      <div class="award-title">${a.title}</div>
+      <div class="award-winner" style="color:${HCOLOR[a.winner]||'var(--accent)'}">${a.winner}</div>
+      <div class="award-detail">${a.detail}</div>
+    </div>
+  `).join('');
+}
+
+function renderHistory() {
+  const search = document.getElementById('searchBox')?.value?.toLowerCase() || '';
+  let filtered = activeFilter === 'All' ? entries : entries.filter(e => e.category === activeFilter);
+  if(search) filtered = filtered.filter(e =>
+    (e.event||'').toLowerCase().includes(search) ||
+    (e.note||'').toLowerCase().includes(search) ||
+    (e.house||'').toLowerCase().includes(search) ||
+    (e.subCategory||'').toLowerCase().includes(search)
+  );
+
+  filtered.sort((a,b) => {
+    let va = a[sortField], vb = b[sortField];
+    if(sortField === 'date') { va = new Date(va); vb = new Date(vb); }
+    if(sortField === 'points') { va = Number(va); vb = Number(vb); }
+    return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+  });
+
+  // Render filter chips
+  document.getElementById('filterChips').innerHTML = ['All',...Object.keys(CATS)].map(c =>
+    `<button class="filter-chip ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c}</button>`
+  ).join('');
+
+  if(filtered.length === 0) {
+    document.getElementById('historyBody').innerHTML = `
+      <tr><td colspan="8">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">No entries found</div>
+          <div style="color:var(--muted)">Click "Add Points" to get started</div>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  document.getElementById('historyBody').innerHTML = filtered.map(e => `
+    <tr>
+      <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td><span class="house-tag" style="background:${HBGCOLOR[e.house]};color:${HCOLOR[e.house]}">${e.house}</span></td>
+      <td>${e.category}</td>
+      <td style="color:var(--muted)">${e.subCategory||'-'}</td>
+      <td>${e.event||'-'}</td>
+      <td class="${e.points>=0?'points-positive':'points-negative'}">${e.points>=0?'+':''}${e.points}</td>
+      <td style="color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note||''}</td>
+      <td>${isAdmin() ? `<button class="delete-btn" onclick="deleteEntry('${e.id}')" title="Delete">🗑️</button>` : ''}</td>
+    </tr>`).join('');
+}
+
+function sortHistory(field) {
+  if(sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = false; }
+  renderHistory();
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  renderHistory();
+}
+
+// ===== FORM FUNCTIONS =====
+function populateSelects() {
+  const catKeys = Object.keys(CATS);
+  ['addCategory','bulkCategory'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = catKeys.map(c=>`<option value="${c}">${c}</option>`).join('');
+  });
+  ['addHouse'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = HOUSES.map(h=>`<option value="${h}">${h}</option>`).join('');
+  });
+}
+
+function updateAddSub() {
+  const cat = document.getElementById('addCategory').value;
+  const subs = CATS[cat].subs;
+  document.getElementById('addSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  updateAddPoints();
+}
+
+function updateAddPoints() {
+  const cat = document.getElementById('addCategory').value;
+  const sub = document.getElementById('addSubCategory').value;
+  const pos = parseInt(document.getElementById('addPosition').value);
+  const pts = calcPoints(cat, sub, pos);
+  document.getElementById('addPoints').placeholder = pts !== 0 ? `Auto: ${pts}` : 'Enter custom points';
+  document.getElementById('addPoints').value = '';
+  document.getElementById('addPointsHelper').textContent = pts !== 0 ? `Points auto-calculated: ${pts}` : 'Custom points required for this selection';
+}
+
+function updateBulkSub() {
+  const cat = document.getElementById('bulkCategory').value;
+  const subs = CATS[cat].subs;
+  document.getElementById('bulkSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('bulkInputs').innerHTML = `
+    <div style="margin-top:16px">
+      <label class="form-label">Points per House</label>
+      ${HOUSES.map(h => `
+        <div class="form-group" style="display:flex;align-items:center;gap:10px">
+          <span class="house-tag" style="background:${HBGCOLOR[h]};color:${HCOLOR[h]};min-width:100px;text-align:center">${h}</span>
+          <input type="number" class="form-input" id="bulk_${h}" value="0" min="0" style="flex:1">
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+// ===== MODALS =====
+function openModal(type) {
+  document.getElementById(type+'Modal').classList.add('active');
+  if(type==='add') { updateAddSub(); }
+  if(type==='bulk') { updateBulkSub(); }
+}
+
+function closeModal(type) {
+  document.getElementById(type+'Modal').classList.remove('active');
+}
+
+async function saveEntry() {
+  const house = document.getElementById('addHouse').value;
+  const category = document.getElementById('addCategory').value;
+  const subCategory = document.getElementById('addSubCategory').value;
+  const position = parseInt(document.getElementById('addPosition').value);
+  const override = document.getElementById('addPoints').value;
+  const event = document.getElementById('addEvent').value;
+  const note = document.getElementById('addNote').value;
+  const points = override ? parseInt(override) : calcPoints(category, subCategory, position);
+
+  if(!points && points !== 0) { showToast('Please enter valid points','error'); return; }
+  if(points === 0 && !override) { showToast('Please enter custom points for this selection','error'); return; }
+
+  try {
+    showSaving();
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+      house, category, subCategory, position, points, event, note,
+      date: new Date().toISOString()
+    };
+    
+    await apiPost({action: 'addEntry', entry: entry});
+    entries.push(entry);
+    
+    closeModal('add');
+    render();
+    showSaved();
+    showToast(`+${points} points added to ${house}`,'success');
+  } catch(err) {
+    showToast('Failed to save: ' + err.message, 'error');
+  }
+}
+
+async function saveBulk() {
+  const cat = document.getElementById('bulkCategory').value;
+  const sub = document.getElementById('bulkSubCategory').value;
+  const event = document.getElementById('bulkEvent').value;
+  let count = 0;
+  const newEntries = [];
+
+  HOUSES.forEach(h => {
+    const pts = parseInt(document.getElementById('bulk_'+h).value) || 0;
+    if(pts !== 0) {
+      newEntries.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+        house: h, category: cat, subCategory: sub,
+        position: 0, points: pts, event, note: '',
+        date: new Date().toISOString()
+      });
+      count++;
+    }
+  });
+
+  try {
+    showSaving();
+    if(newEntries.length > 0) {
+      await apiPost({action: 'addEntries', entries: newEntries});
+      entries.push(...newEntries);
+    }
+    
+    closeModal('bulk');
+    render();
+    showSaved();
+    showToast(`Bulk added points for ${count} houses`,'success');
+  } catch(err) {
+    showToast('Failed to save: ' + err.message, 'error');
+  }
+}
+
+async function deleteEntry(id) {
+  const deleted = entries.find(e => e.id === id);
+  if(!deleted) return;
+
+  const label = deleted.house + (deleted.event ? ` — ${deleted.event}` : '');
+  if(!confirm(`Delete entry for ${label}?`)) return;
+
+  try {
+    showSaving();
+    await apiPost({action: 'deleteEntry', id: id});
+    
+    entries = entries.filter(e => e.id !== id);
+
+    // Remove student data for this house+exam
+    const exam = deleted.exam || deleted.event;
+    if(exam && deleted.category === 'Academics') {
+      studentData = studentData.filter(s => !(s.house === deleted.house && s.exam === exam));
+      await apiPost({action: 'deleteStudentData', house: deleted.house, cls: undefined});
+    }
+
+    render();
+    showSaved();
+    showToast('Entry deleted','info');
+  } catch(err) {
+    showToast('Failed to delete: ' + err.message, 'error');
+  }
+}
+
+function confirmReset() {
+  document.getElementById('confirmDialog').classList.add('active');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmDialog').classList.remove('active');
+}
+
+async function resetAll() {
+  try {
+    showSaving();
+    await apiPost({action: 'resetAll'});
+    
+    entries = [];
+    studentData = [];
+    rawExcelData = [];
+    columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
+    
+    closeConfirm();
+    render();
+    showSaved();
+    showToast('All data has been reset','info');
+  } catch(err) {
+    showToast('Failed to reset: ' + err.message, 'error');
+  }
+}
+
+function exportCSV() {
+  if(entries.length === 0) { showToast('No data to export','error'); return; }
+  const headers = ['Date','House','Category','Sub-Category','Position','Points','Event','Note'];
+  const rows = entries.map(e => [
+    new Date(e.date).toLocaleDateString('en-IN'),
+    e.house, e.category, e.subCategory, e.position,
+    e.points, e.event||'', e.note||''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `house-points-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('CSV exported successfully','success');
+}
+
+// ===== TOAST =====
+function showToast(msg, type='success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  const icons = { success:'✓', error:'✕', info:'ℹ' };
+  toast.innerHTML = `<span>${icons[type]||''}</span> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ===== NAV =====
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeView = tab.dataset.view;
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(activeView+'View').classList.add('active');
+    renderNavTabs();
+  });
+});
+
+// Auto-save form inputs on change
+document.addEventListener('change', e => {
+  if(e.target.matches('.form-select, .form-input, .form-textarea')) {
+    persistFormState();
+  }
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('active'); });
+});
+
+// Resize handler for charts
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if(activeView==='charts') renderCharts(); }, 200);
+});
+
+// ===== EXCEL IMPORT =====
+
+function downloadTemplate() {
+  const csv = `S.No,Name,Admission Number,Class,Section,House,English,Maths,Science,Social,Hindi,Computer,Total
+1,Rahul Sharma,ADM001,8,A,Compassion,85,92,78,88,80,85,508
+2,Priya Patel,ADM002,8,A,Honesty,90,88,85,82,87,90,522
+3,Amit Kumar,ADM003,8,A,Courage,78,85,80,75,82,78,478
+4,Sneha Reddy,ADM004,8,A,Loyalty,88,90,82,85,80,88,513
+5,Vikram Singh,ADM005,8,A,Truth,82,80,75,88,85,80,490`;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'house-marks-template.csv';
+  a.click();
+  showToast('Template downloaded', 'success');
+}
+
+// Drop zone handlers
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('excelFileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; dropZone.style.background = 'rgba(56,189,248,0.05)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = 'transparent'; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--border)';
+  dropZone.style.background = 'transparent';
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','csv'].includes(ext)) {
+    showToast('Unsupported file format', 'error');
+    return;
+  }
+
+  if(file.size > 10 * 1024 * 1024) {
+    showToast('File too large. Max 10MB allowed.', 'error');
+    return;
+  }
+
+  const fileInfo = document.getElementById('fileInfo');
+  fileInfo.style.display = 'block';
+  fileInfo.innerHTML = `<span style="color:var(--accent)">⏳</span> Loading ${file.name}...`;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      rawExcelData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+      if(!rawExcelData || rawExcelData.length < 2 || !rawExcelData[0] || rawExcelData[0].length === 0) {
+        showToast('File is empty or has no data rows', 'error');
+        fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Empty or invalid file`;
+        return;
+      }
+
+      fileInfo.innerHTML = `<span style="color:var(--success)">📎</span> ${file.name} (${(file.size/1024).toFixed(1)} KB) — ${rawExcelData.length - 1} rows detected`;
+
+      autoDetectColumns();
+
+      // Validate required columns
+      const warnings = [];
+      if(columnMapping.name === -1) warnings.push('Student Name');
+      if(columnMapping.house === -1) warnings.push('House');
+      if(columnMapping.subjects.length === 0) warnings.push('Subject marks');
+      if(warnings.length > 0) {
+        fileInfo.innerHTML += `<div style="margin-top:8px;padding:8px 12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.75rem;color:var(--gold)">
+          ⚠️ Could not auto-detect: <b>${warnings.join(', ')}</b>. Please use "Change Column Mapping" to fix.
+        </div>`;
+      }
+
+      renderPreview();
+      showToast(`Loaded ${rawExcelData.length - 1} rows from ${workbook.SheetNames[0]}`, 'success');
+    } catch(err) {
+      showToast('Failed to parse file: ' + err.message, 'error');
+      fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Failed to parse: ${err.message}`;
+    }
+  };
+  reader.onerror = function() {
+    showToast('Failed to read file', 'error');
+    fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Read error`;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function autoDetectColumns() {
+  const headers = rawExcelData[0].map(h => String(h || '').toLowerCase().trim());
+
+  columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
+
+  headers.forEach((h, i) => {
+    if(/^s\.?no|serial|roll\b/i.test(h)) columnMapping.sNo = i;
+    else if(/^adm|admission|reg\.?\s*no/i.test(h)) columnMapping.admNo = i;
+    else if(/^(student|name)\s*(name)?$/i.test(h) && columnMapping.name === -1) columnMapping.name = i;
+    else if(/^(class|grade|std|standard)\b/i.test(h)) columnMapping.class = i;
+    else if(/^(section|div|division)\b/i.test(h)) columnMapping.section = i;
+    else if(/^(house)$/i.test(h)) columnMapping.house = i;
+    else if(/^(total|grand\s*total)$/i.test(h)) columnMapping.total = i;
+    else if(!columnMapping.name && /name/i.test(h)) columnMapping.name = i;
+    else if(!columnMapping.house && /house/i.test(h)) columnMapping.house = i;
+  });
+
+  // Detect subject columns: anything that's not already mapped and looks numeric
+  const excludeKeywords = /^s\.?no|serial|roll|name|student|adm|admission|reg|class|grade|std|section|div|house|group|team|total|grand/i;
+  headers.forEach((h, i) => {
+    if(i === columnMapping.sNo || i === columnMapping.name || i === columnMapping.admNo ||
+       i === columnMapping.class || i === columnMapping.section || i === columnMapping.house || i === columnMapping.total) return;
+    if(!excludeKeywords.test(h) && h.length > 0) {
+      // Check if this column has numeric values (sample more rows)
+      const sampleRows = rawExcelData.slice(1, 21);
+      const numericCount = sampleRows.filter(row => !isNaN(parseFloat(row[i])) && row[i] !== '' && row[i] !== null && row[i] !== undefined).length;
+      if(numericCount >= Math.ceil(sampleRows.length * 0.5)) columnMapping.subjects.push(i);
+    }
+  });
+
+  // If no total column found, calculate from subjects
+  if(columnMapping.total === -1 && columnMapping.subjects.length > 0) {
+    columnMapping.total = -2; // Flag: calculate from subjects
+  }
+
+  // Save mapping
+  saveData('vivaHouseMapping', columnMapping);
+}
+
+function renderPreview() {
+  const headers = rawExcelData[0];
+
+  // Build import actions with exam name and category
+  document.getElementById('importActions').innerHTML = `
+    <div>
+      <label class="form-label">Exam / Event Name</label>
+      <input type="text" class="form-input" id="importExamName" placeholder="e.g. PT-1 Exam 2025">
+    </div>
+    <div>
+      <label class="form-label">Category</label>
+      <select class="form-select" id="importCategory"></select>
+    </div>`;
+  document.getElementById('importActions').style.display = 'grid';
+  document.getElementById('importBtn').style.display = 'block';
+
+  // Re-populate category dropdown
+  const catKeys = Object.keys(CATS);
+  const catSelect = document.getElementById('importCategory');
+  catSelect.innerHTML = catKeys.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // Render student data table at bottom
+  let stuHtml = `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span>Student Data — ${rawExcelData.length - 1} rows</span>
+  </div>`;
+  stuHtml += `<table style="width:100%;border-collapse:collapse;font-size:0.75rem">`;
+  stuHtml += `<thead><tr style="color:var(--muted)">`;
+  headers.forEach((h, i) => {
+    let tag = '';
+    if(i === columnMapping.name) tag = ' [Name]';
+    if(i === columnMapping.class) tag = ' [Class]';
+    if(i === columnMapping.section) tag = ' [Sec]';
+    if(i === columnMapping.house) tag = ' [House]';
+    stuHtml += `<th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">${h}${tag}</th>`;
+  });
+  stuHtml += `</tr></thead><tbody>`;
+
+  const allDataRows = rawExcelData.slice(1);
+  const maxPreviewRows = 500;
+  const displayRows = allDataRows.slice(0, maxPreviewRows);
+  if(allDataRows.length > maxPreviewRows) {
+    stuHtml += `<tr><td colspan="${headers.length}" style="padding:10px;text-align:center;color:var(--muted);font-size:0.75rem">Showing first ${maxPreviewRows} of ${allDataRows.length} rows. Full data will be imported.</td></tr>`;
+  }
+  displayRows.forEach(row => {
+    stuHtml += '<tr>';
+    headers.forEach((h, i) => {
+      let display = row[i] ?? '';
+      let style = 'padding:7px 10px;border-bottom:1px solid var(--border)';
+      if(columnMapping.subjects.includes(i)) {
+        style += ';color:var(--accent);font-weight:600';
+      }
+      if(i === columnMapping.house) {
+        const hv = String(display).trim();
+        if(HOUSES.includes(hv)) display = `<span style="color:${HCOLOR[hv]};font-weight:600">${display}</span>`;
+      }
+      stuHtml += `<td style="${style}">${display}</td>`;
+    });
+    stuHtml += '</tr>';
+  });
+  stuHtml += '</tbody></table>';
+  document.getElementById('studentDataTable').innerHTML = stuHtml;
+  document.getElementById('studentDataSection').style.display = 'block';
+
+  // Calculate and show results
+  calculateHouseResults();
+}
+
+function calculateHouseResults() {
+  const headers = rawExcelData[0];
+  const rows = rawExcelData.slice(1);
+
+  // Group by class, then by house within each class
+  const classHouseMarks = {};
+  const classHouseCounts = {};
+  const allHouseStudents = {};
+  HOUSES.forEach(h => { allHouseStudents[h] = []; });
+
+  rows.forEach(row => {
+    const house = String(row[columnMapping.house] || '').trim();
+    const name = String(row[columnMapping.name] || '').trim();
+    const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
+
+    if(!HOUSES.includes(house) || !name) return;
+
+    let total = 0;
+    if(columnMapping.total >= 0) {
+      total = parseFloat(row[columnMapping.total]) || 0;
+    } else if(columnMapping.subjects.length > 0) {
+      total = columnMapping.subjects.reduce((sum, i) => sum + (parseFloat(row[i]) || 0), 0);
+    }
+
+    if(total >= 0 && name) {
+      if(!classHouseMarks[cls]) classHouseMarks[cls] = {};
+      if(!classHouseCounts[cls]) classHouseCounts[cls] = {};
+      if(!classHouseMarks[cls][house]) classHouseMarks[cls][house] = 0;
+      if(!classHouseCounts[cls][house]) classHouseCounts[cls][house] = 0;
+
+      classHouseMarks[cls][house] += total;
+      classHouseCounts[cls][house]++;
+      allHouseStudents[house].push({ name, marks: total, cls });
+    }
+  });
+
+  // Compute final average per house: average of per-class averages
+  const classes = Object.keys(classHouseMarks).sort();
+  const houseAvgs = HOUSES.map(h => {
+    let classAvgSum = 0;
+    let classCount = 0;
+    let totalMarks = 0;
+    let totalCount = 0;
+
+    classes.forEach(cls => {
+      const m = classHouseMarks[cls]?.[h] || 0;
+      const c = classHouseCounts[cls]?.[h] || 0;
+      if(c > 0) {
+        classAvgSum += m / c;
+        classCount++;
+      }
+      totalMarks += m;
+      totalCount += c;
+    });
+
+    const finalAvg = classCount > 0 ? (classAvgSum / classCount) : 0;
+    const topStudent = allHouseStudents[h].sort((a, b) => b.marks - a.marks)[0] || null;
+
+    return {
+      house: h,
+      total: totalMarks,
+      count: totalCount,
+      avg: finalAvg,
+      avgDisplay: finalAvg.toFixed(1),
+      classCount,
+      topStudent
+    };
+  }).sort((a, b) => b.avg - a.avg);
+
+  // Assign points with tie handling
+  const acadPts = CATS['Academics'].points;
+  let results = houseAvgs.map((h, i) => ({
+    ...h,
+    position: i + 1,
+    points: acadPts[i] || 0
+  }));
+
+  // Fix tied houses: same avg = same position and points
+  for(let i = 1; i < results.length; i++) {
+    if(results[i].avg === results[i-1].avg) {
+      results[i].position = results[i-1].position;
+      results[i].points = results[i-1].points;
+    }
+  }
+
+  document.getElementById('houseResults').style.display = 'block';
+  document.getElementById('resultsGrid').innerHTML = results.map(r => `
+    <div style="background:var(--card2);border-radius:12px;padding:16px;text-align:center;border:2px solid ${HCOLOR[r.house]}30">
+      <div style="font-size:1.5rem;margin-bottom:4px">${r.position === 1 ? '🥇' : r.position === 2 ? '🥈' : r.position === 3 ? '🥉' : '#' + r.position}</div>
+      <div style="font-weight:700;color:${HCOLOR[r.house]};margin-bottom:4px">${r.house}</div>
+      <div style="font-size:1.5rem;font-weight:900;color:var(--accent)">+${r.points} pts</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">
+        Avg: ${r.avgDisplay} | ${r.count} students | ${r.classCount} class${r.classCount !== 1 ? 'es' : ''}<br>
+        Total: ${r.total} marks
+      </div>
+      ${r.topStudent ? `<div style="font-size:0.7rem;color:var(--gold);margin-top:4px">Top: ${r.topStudent.name} (${r.topStudent.marks})</div>` : ''}
+    </div>
+  `).join('');
+
+  // Store results for import
+  window._importResults = results;
+}
+
+async function importData() {
+  const results = window._importResults;
+  if(!results || results.length === 0) { showToast('No data to import', 'error'); return; }
+
+  const examName = document.getElementById('importExamName').value || 'Excel Import';
+  const category = document.getElementById('importCategory').value;
+  const headers = rawExcelData[0];
+  const rows = rawExcelData.slice(1);
+  let count = 0;
+  let idCounter = Date.now();
+
+  const newStudents = [];
+  const newEntries = [];
+
+  // Save student data persistently
+  rows.forEach(row => {
+    const house = String(row[columnMapping.house] || '').trim();
+    const name = String(row[columnMapping.name] || '').trim();
+    const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
+    const sec = columnMapping.section >= 0 ? String(row[columnMapping.section] || '').trim() : '';
+
+    if(!HOUSES.includes(house) || !name) return;
+
+    const subjects = {};
+    let total = 0;
+    if(columnMapping.total >= 0) {
+      total = parseFloat(row[columnMapping.total]) || 0;
+    }
+    columnMapping.subjects.forEach((si, idx) => {
+      const subName = headers[si] || ('Subject ' + (idx + 1));
+      const val = parseFloat(row[si]) || 0;
+      subjects[subName] = val;
+      if(columnMapping.total < 0) total += val;
+    });
+
+    newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
+  });
+
+  // Add overall points per house
+  results.forEach(r => {
+    if(r.points > 0) {
+      newEntries.push({
+        id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
+        house: r.house,
+        category: category,
+        subCategory: 'Overall',
+        position: r.position,
+        points: r.points,
+        event: examName,
+        note: `Avg: ${r.avgDisplay} | ${r.count} students | ${r.classCount} class${r.classCount !== 1 ? 'es' : ''} (per-class avg)`,
+        date: new Date().toISOString(),
+        exam: examName
+      });
+      count++;
+    }
+  });
+
+  try {
+    showSaving();
+    await apiPost({
+      action: 'importExcelData',
+      entries: newEntries,
+      students: newStudents,
+      examName: examName,
+      category: category
+    });
+    
+    entries.push(...newEntries);
+    studentData.push(...newStudents);
+    
+    clearFile();
+    render();
+    showSaved();
+    showToast(`Imported points for ${count} houses from "${examName}"`, 'success');
+  } catch(err) {
+    showToast('Failed to import: ' + err.message, 'error');
+  }
+}
+
+function clearFile() {
+  rawExcelData = [];
+  columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
+  window._importResults = null;
+  saveData('vivaHouseMapping', columnMapping);
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('importActions').style.display = 'none';
+  document.getElementById('importBtn').style.display = 'none';
+  document.getElementById('houseResults').style.display = 'none';
+  document.getElementById('studentDataSection').style.display = 'none';
+  document.getElementById('excelFileInput').value = '';
+}
+
+function openHouseDetail(house) {
+  window._currentAcadHouse = house;
+  window._currentDetailFilter = 'all';
+  window._currentDetailClass = 'all';
+  document.getElementById('houseAcadTitle').innerHTML = `<span style="color:${HCOLOR[house]}">${house}</span> — All Entries`;
+
+  // Build filter buttons dynamically
+  const catKeys = Object.keys(CATS);
+  let filterHtml = `<button class="btn btn-sm btn-primary" onclick="filterHouseDetail('all')" data-filter="all">All</button>`;
+  catKeys.forEach(c => {
+    filterHtml += `<button class="btn btn-sm btn-ghost" onclick="filterHouseDetail('${c}')" data-filter="${c}">${c}</button>`;
+  });
+  filterHtml += `<span style="border-left:1px solid var(--border);margin:0 4px"></span>`;
+  filterHtml += `<select class="form-select" id="houseAcadClassFilter" onchange="filterHouseDetailClass()" style="width:auto;font-size:0.75rem;padding:4px 8px"><option value="all">All Classes</option></select>`;
+  document.getElementById('houseDetailFilters').innerHTML = filterHtml;
+
+  // Populate class filter from student data
+  const students = studentData.filter(s => s.house === house);
+  const classes = [...new Set(students.map(s => s.cls).filter(Boolean))].sort();
+  const classSelect = document.getElementById('houseAcadClassFilter');
+  classes.forEach(c => {
+    classSelect.innerHTML += `<option value="${c}">${c}</option>`;
+  });
+
+  document.getElementById('houseAcadModal').classList.add('active');
+  renderHouseDetailTable(house, 'all', 'all');
+}
+
+function closeHouseAcad() {
+  document.getElementById('houseAcadModal').classList.remove('active');
+}
+
+function filterHouseDetail(cat) {
+  window._currentDetailFilter = cat;
+  document.querySelectorAll('#houseAcadModal [data-filter]').forEach(btn => {
+    btn.className = btn.dataset.filter === cat ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
+  });
+  renderHouseDetailTable(window._currentAcadHouse, cat, window._currentDetailClass);
+}
+
+function filterHouseDetailClass() {
+  window._currentDetailClass = document.getElementById('houseAcadClassFilter').value;
+  renderHouseDetailTable(window._currentAcadHouse, window._currentDetailFilter, window._currentDetailClass);
+}
+
+function renderHouseDetailTable(house, filterCat, filterClass) {
+  const houseEntries = entries.filter(e => e.house === house);
+  const filteredEntries = filterCat === 'all' ? houseEntries : houseEntries.filter(e => e.category === filterCat);
+
+  // Get student data for academic entries (filtered by class)
+  let students = studentData.filter(s => s.house === house);
+  if(filterClass !== 'all') students = students.filter(s => s.cls === filterClass);
+
+  const hasEntries = filteredEntries.length > 0;
+  const hasStudents = students.length > 0 && (filterCat === 'all' || filterCat === 'Academics');
+
+  if(!hasEntries && !hasStudents) {
+    document.getElementById('houseAcadTable').innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted)">No data found</div>`;
+    document.getElementById('houseAcadSummary').innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  // Entries table
+  if(hasEntries) {
+    html += `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border)">Points Entries — ${filteredEntries.length} records</div>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:0.75rem">`;
+    html += `<thead><tr style="color:var(--muted)">
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Date</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Category</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Event</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Note</th>
+      <th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--accent)">Points</th>
+    </tr></thead><tbody>`;
+
+    filteredEntries.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(e => {
+      const catColor = CATS[e.category]?.color || 'var(--muted)';
+      html += `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${new Date(e.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)"><span style="color:${catColor};font-weight:600">${e.category}</span></td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e.event || '-'}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || '-'}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${e.points >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700">${e.points >= 0 ? '+' : ''}${e.points}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  // Academic student data
+  if(hasStudents) {
+    const allSubjects = [];
+    students.forEach(s => {
+      Object.keys(s.subjects).forEach(sub => {
+        if(!allSubjects.includes(sub)) allSubjects.push(sub);
+      });
+    });
+
+    const byClass = {};
+    students.forEach(s => {
+      if(!byClass[s.cls]) byClass[s.cls] = [];
+      byClass[s.cls].push(s);
+    });
+
+    html += `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border);border-top:2px solid var(--border)">Academic Records — ${students.length} students</div>`;
+
+    Object.keys(byClass).sort().forEach(className => {
+      const classStudents = byClass[className];
+      html += `<div style="padding:8px 14px;background:rgba(56,189,248,0.05);font-size:0.75rem;font-weight:600;color:var(--accent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span>Class ${className} — ${classStudents.length} student${classStudents.length > 1 ? 's' : ''}</span>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:0.65rem;padding:2px 8px" onclick="deleteClassStudents(this.dataset.house,this.dataset.cls)" data-house="${house}" data-cls="${className}">Delete</button>
+      </div>`;
+      html += `<table style="width:100%;border-collapse:collapse;font-size:0.75rem">`;
+      html += `<thead><tr style="color:var(--muted)">
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">#</th>
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Name</th>
+        <th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border)">Sec</th>
+        ${allSubjects.map(s => `<th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border)">${s}</th>`).join('')}
+        <th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--accent)">Total</th>
+      </tr></thead><tbody>`;
+
+      classStudents.sort((a, b) => b.total - a.total).forEach((s, i) => {
+        html += `<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${i + 1}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:500">${s.name}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center">${s.sec}</td>
+          ${allSubjects.map(sub => {
+            const val = s.subjects[sub];
+            if(val === undefined) return `<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--muted)">-</td>`;
+            const markColor = val >= 80 ? 'color:var(--success)' : val >= 50 ? 'color:var(--text)' : 'color:var(--danger)';
+            return `<td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;${markColor};font-weight:600">${val}</td>`;
+          }).join('')}
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${HCOLOR[house]};font-weight:700">${s.total}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    });
+  }
+
+  document.getElementById('houseAcadTable').innerHTML = html;
+
+  // Summary
+  const totalPts = filteredEntries.reduce((s, e) => s + e.points, 0);
+  const catBreakdown = Object.keys(CATS).map(c => {
+    const pts = filteredEntries.filter(e => e.category === c).reduce((s, e) => s + e.points, 0);
+    return pts > 0 ? `${c}: ${pts}` : null;
+  }).filter(Boolean).join(' | ');
+  document.getElementById('houseAcadSummary').innerHTML = `Total: ${totalPts} pts | ${filteredEntries.length} entries` + (catBreakdown ? ` | ${catBreakdown}` : '') + (hasStudents ? ` | ${students.length} students` : '');
+}
+
+async function deleteClassStudents(house, cls) {
+  if(!confirm(`Delete all Class ${cls} student data for ${house}?`)) return;
+  
+  try {
+    showSaving();
+    await apiPost({action: 'deleteStudentData', house: house, cls: cls});
+    
+    studentData = studentData.filter(s => !(s.house === house && s.cls === cls));
+    
+    filterHouseDetail();
+    render();
+    showSaved();
+    showToast(`Class ${cls} student data deleted for ${house}`, 'info');
+  } catch(err) {
+    showToast('Failed to delete: ' + err.message, 'error');
+  }
+}
+
+// ===== USER MANAGEMENT =====
+async function loadUsers() {
+  try {
+    users = await apiGet('getUsers');
+    renderUsersTable();
+  } catch(err) {
+    showToast('Failed to load users: ' + err.message, 'error');
+  }
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('usersTableBody');
+  if(!tbody) return;
+  
+  tbody.innerHTML = users.map(user => `
+    <tr>
+      <td><strong>${user.username}</strong></td>
+      <td>${user.fullName}</td>
+      <td>
+        <span class="role-badge ${user.role === 'admin' ? 'role-admin' : 'role-user'}">
+          ${user.role}
+        </span>
+      </td>
+      <td>
+        ${user.username !== 'admin' ? `
+          <button class="btn btn-ghost btn-sm" onclick="editUser('${user.username}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')">Delete</button>
+        ` : '<span style="color:var(--muted);font-size:0.8rem">Protected</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function showAddUserForm() {
+  document.getElementById('addUserForm').style.display = 'block';
+  document.getElementById('newUsername').value = '';
+  document.getElementById('newFullName').value = '';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('newRole').value = 'user';
+}
+
+function hideAddUserForm() {
+  document.getElementById('addUserForm').style.display = 'none';
+}
+
+async function addNewUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const fullName = document.getElementById('newFullName').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const role = document.getElementById('newRole').value;
+  
+  if(!username || !fullName || !password) {
+    showToast('Please fill in all fields', 'error');
+    return;
+  }
+  
+  if(password.length < 4) {
+    showToast('Password must be at least 4 characters', 'error');
+    return;
+  }
+  
+  try {
+    showSaving();
+    const result = await apiPost({
+      action: 'register',
+      user: {username, password, fullName, role}
+    });
+    
+    if(result.success) {
+      hideAddUserForm();
+      await loadUsers();
+      showSaved();
+      showToast('User added successfully', 'success');
+    } else {
+      showToast(result.error, 'error');
+    }
+  } catch(err) {
+    showToast('Failed to add user: ' + err.message, 'error');
+  }
+}
+
+async function deleteUser(username) {
+  if(!confirm(`Delete user "${username}"?`)) return;
+  
+  try {
+    showSaving();
+    const result = await apiPost({action: 'deleteUser', username});
+    
+    if(result.success) {
+      await loadUsers();
+      showSaved();
+      showToast('User deleted', 'info');
+    } else {
+      showToast(result.error, 'error');
+    }
+  } catch(err) {
+    showToast('Failed to delete user: ' + err.message, 'error');
+  }
+}
+
+function editUser(username) {
+  const user = users.find(u => u.username === username);
+  if(!user) return;
+  
+  // Simple edit - just change role
+  const newRole = prompt(`Change role for "${user.username}" (admin/user):`, user.role);
+  if(newRole && (newRole === 'admin' || newRole === 'user')) {
+    updateUser(username, {role: newRole});
+  }
+}
+
+async function updateUser(username, updates) {
+  try {
+    showSaving();
+    const result = await apiPost({
+      action: 'updateUser',
+      user: {username, ...updates}
+    });
+    
+    if(result.success) {
+      await loadUsers();
+      showSaved();
+      showToast('User updated', 'success');
+    } else {
+      showToast(result.error, 'error');
+    }
+  } catch(err) {
+    showToast('Failed to update user: ' + err.message, 'error');
+  }
+}
+
+async function changeMyPassword() {
+  const currentPassword = document.getElementById('currentPassword').value;
+  const newPassword = document.getElementById('newPasswordInput').value;
+  const confirmPassword = document.getElementById('confirmPassword').value;
+  
+  if(!currentPassword || !newPassword || !confirmPassword) {
+    showToast('Please fill in all fields', 'error');
+    return;
+  }
+  
+  if(newPassword !== confirmPassword) {
+    showToast('New passwords do not match', 'error');
+    return;
+  }
+  
+  if(newPassword.length < 4) {
+    showToast('Password must be at least 4 characters', 'error');
+    return;
+  }
+  
+  try {
+    showSaving();
+    const result = await apiPost({
+      action: 'changePassword',
+      username: currentUser.username,
+      oldPassword: currentPassword,
+      newPassword: newPassword
+    });
+    
+    if(result.success) {
+      closeModal('password');
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPasswordInput').value = '';
+      document.getElementById('confirmPassword').value = '';
+      showSaved();
+      showToast('Password changed successfully', 'success');
+    } else {
+      showToast(result.error, 'error');
+    }
+  } catch(err) {
+    showToast('Failed to change password: ' + err.message, 'error');
+  }
+}
+
+// ===== INIT =====
+// Check if Apps Script URL is configured
+if(APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+  document.getElementById('saveIndicator').innerHTML = '<span style="color:var(--danger);font-size:0.7rem">⚠️ Configure APPS_SCRIPT_URL</span>';
+  showToast('Please configure APPS_SCRIPT_URL in the script', 'error');
+}
+
+// Check for saved user session
+const savedUser = localStorage.getItem('vivaHouseUser');
+if(savedUser) {
+  try {
+    currentUser = JSON.parse(savedUser);
+    showMainApp();
+    initializeApp();
+  } catch(e) {
+    showLoginScreen();
+  }
+} else {
+  showLoginScreen();
+}
+</script>
+
+</body>
+</html>

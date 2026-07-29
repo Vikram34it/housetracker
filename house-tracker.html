@@ -1575,7 +1575,7 @@
 // ===== CONFIGURATION =====
 // IMPORTANT: Replace this with your deployed Google Apps Script URL
 // To get this URL: Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmbLK4pkcX35D6aWoOIG9XZIUG_HwWznwbc40zKvLfWQtqCDNiHXTavN4HEFBNnX8l/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby6p41z-tZtUBNcz7wFF087ttafzRy4Hb8eSDhXvLHJuSkbD9YuAAOaReTo0VhA29Gg/exec';
 
 // ===== CONSTANTS =====
 const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
@@ -1610,8 +1610,12 @@ async function apiGet(action, params = {}) {
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   
-  const response = await fetch(url);
-  const data = await response.json();
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    redirect: 'follow'
+  });
+  const text = await response.text();
+  const data = JSON.parse(text);
   if(data.error) throw new Error(data.error);
   return data;
 }
@@ -1620,9 +1624,11 @@ async function apiPost(data) {
   const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     body: JSON.stringify(data),
-    headers: { 'Content-Type': 'text/plain' }
+    headers: { 'Content-Type': 'text/plain' },
+    redirect: 'follow'
   });
-  const result = await response.json();
+  const text = await response.text();
+  const result = JSON.parse(text);
   if(result.error) throw new Error(result.error);
   return result;
 }

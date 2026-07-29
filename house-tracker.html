@@ -1108,6 +1108,9 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
   /* RESPONSIVE */
+  .admin-only { display: none; }
+  .admin-only.visible { display: flex; }
+  
   @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
     .charts-grid { grid-template-columns: 1fr; }
@@ -1203,13 +1206,12 @@
     </div>
     <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
       <div class="login-error" id="loginError"></div>
-      <input type="text" class="login-input" id="loginUsername" placeholder="Username" required autocomplete="username">
+      <select class="login-input" id="loginUsername" required>
+        <option value="" disabled selected>Select User</option>
+      </select>
       <input type="password" class="login-input" id="loginPassword" placeholder="Password" required autocomplete="current-password">
       <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
     </form>
-    <div class="login-footer">
-      Default admin: admin / admin123
-    </div>
   </div>
 </div>
 
@@ -1757,6 +1759,33 @@ function handleLogout() {
 function showLoginScreen() {
   document.getElementById('loginOverlay').classList.remove('hidden');
   document.getElementById('mainHeader').style.display = 'none';
+  loadUsersForLogin();
+}
+
+async function loadUsersForLogin() {
+  try {
+    const usersList = await apiGet('getUsers');
+    const select = document.getElementById('loginUsername');
+    select.innerHTML = '<option value="" disabled selected>Select User</option>';
+    
+    // Sort: regular users first, admin last
+    const sorted = usersList.sort((a, b) => {
+      if(a.role === 'admin') return 1;
+      if(b.role === 'admin') return -1;
+      return a.username.localeCompare(b.username);
+    });
+    
+    sorted.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user.username;
+      option.textContent = `${user.fullName} (${user.role})`;
+      select.appendChild(option);
+    });
+  } catch(err) {
+    // If can't load users, allow manual entry
+    const select = document.getElementById('loginUsername');
+    select.innerHTML = '<option value="" disabled selected>Select User</option>';
+  }
 }
 
 function showMainApp() {
@@ -1779,7 +1808,13 @@ function applyRoleRestrictions() {
   
   // Hide/show admin-only elements
   document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = isAdmin ? 'flex' : 'none';
+    if(isAdmin) {
+      el.classList.add('visible');
+      el.style.display = '';
+    } else {
+      el.classList.remove('visible');
+      el.style.display = 'none';
+    }
   });
   
   // Disable history delete buttons for non-admins

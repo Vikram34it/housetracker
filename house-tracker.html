@@ -2295,7 +2295,6 @@ function renderFromEntries(container, classEntries) {
     <table class="academic-summary-table">
       <thead><tr>
         <th>Class</th>
-        <th>Event</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
       </tr></thead><tbody>`;
 
@@ -2313,8 +2312,7 @@ function renderFromEntries(container, classEntries) {
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
       html += `<tr>
-        ${ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : ''}
-        <td style="font-size:0.8rem;color:var(--muted)">${event}</td>`;
+        ${ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : ''}`;
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) {
@@ -2333,6 +2331,7 @@ function renderFromEntries(container, classEntries) {
         }
 
         html += `<td class="house-cell" style="color:${HCOLOR[h]}">
+          <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${event}</div>
           ${avgHtml}<span style="font-size:0.7rem;color:var(--muted)">${label}</span>
           <span style="font-weight:700;font-size:0.85rem"> ${pts}pts</span>
         </td>`;
@@ -2426,7 +2425,6 @@ function renderFromAcadEntries(container, acadEntries) {
     <div class="academic-summary-title">📊 Academic Performance — Event Wise</div>
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Event</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
       </tr></thead><tbody>`;
 
@@ -2440,7 +2438,7 @@ function renderFromAcadEntries(container, acadEntries) {
     const rankMap = {};
     houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-    html += `<tr><td style="font-size:0.85rem;color:var(--muted);font-weight:600">${event}</td>`;
+    html += `<tr>`;
     HOUSES.forEach(h => {
       const d = houseData[h];
       if(!d || d.count === 0) {
@@ -2453,6 +2451,7 @@ function renderFromAcadEntries(container, acadEntries) {
       const avgPos = d.count > 0 ? (d.posSum / d.count).toFixed(1) : '-';
 
       html += `<td class="house-cell" style="color:${HCOLOR[h]}">
+        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${event}</div>
         <span style="font-size:0.7rem;color:var(--muted)">${label}</span>
         <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
       </td>`;

@@ -2242,15 +2242,15 @@ function renderAcademicSummary() {
     return;
   }
 
-  // 2) studentData from Excel imports → class-wise avg scores
-  if(studentData && studentData.length > 0) {
-    renderFromStudentData(container);
+  // 2) Any academic entries (from imports) → event-wise with event name in cells
+  if(acadEntries.length > 0) {
+    renderFromAcadEntries(container, acadEntries);
     return;
   }
 
-  // 3) Any academic entries → show grouped by event
-  if(acadEntries.length > 0) {
-    renderFromAcadEntries(container, acadEntries);
+  // 3) studentData → class-wise avg scores (no event names)
+  if(studentData && studentData.length > 0) {
+    renderFromStudentData(container);
     return;
   }
 

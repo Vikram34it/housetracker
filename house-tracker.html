@@ -51,23 +51,23 @@
     --loyalty-bg: rgba(217,119,6,0.08);
     --truth: #7c3aed;
     --truth-bg: rgba(124,58,237,0.08);
-    --bg: #f5f0ff;
+    --bg: #f8f4ff;
     --bg2: #ede6ff;
     --card: #ffffff;
-    --card2: #faf7ff;
-    --card3: #e8deff;
-    --text: #0f0728;
-    --muted: #5b4a82;
+    --card2: #fcf6ff;
+    --card3: #f0e8ff;
+    --text: #0d001a;
+    --muted: #4a3670;
     --accent: #7c3aed;
-    --accent2: #ec4899;
+    --accent2: #e11d8f;
     --gold: #d97706;
-    --silver: #94a3b8;
+    --silver: #64748b;
     --bronze: #b45309;
-    --success: #10b981;
-    --danger: #ef4444;
-    --glass: rgba(255,255,255,0.75);
-    --border: rgba(124,58,237,0.08);
-    --shadow: 0 8px 32px rgba(124,58,237,0.1);
+    --success: #059669;
+    --danger: #dc2626;
+    --glass: rgba(255,255,255,0.8);
+    --border: rgba(124,58,237,0.1);
+    --shadow: 0 8px 32px rgba(124,58,237,0.12);
     --heading-font: 'Poppins', system-ui, sans-serif;
     --body-font: 'Inter', system-ui, sans-serif;
   }
@@ -417,31 +417,217 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   .section-title {
     font-family: var(--heading-font);
-    font-size: 1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--muted);
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    text-transform: none;
   }
 
   .section-title::before {
-    content: '';
-    width: 4px;
-    height: 20px;
-    border-radius: 2px;
-    background: linear-gradient(to bottom, var(--accent), var(--accent2));
-    flex-shrink: 0;
+    display: none;
   }
 
-  [data-theme="vibrant"] body { font-weight: 500; }
+  .section-subtitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+  }
+
+  /* DASHBOARD HEADER */
+  .dash-header { margin-bottom: 32px; }
+
+  .dash-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .dash-stats-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .dash-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 16px 28px;
+    text-align: center;
+    flex: 1;
+    min-width: 140px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .dash-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+
+  .dash-stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .dash-stat-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  /* HOUSE CARDS GRID */
+  .house-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .house-card {
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .house-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
+
+  .hc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+  .hc-emoji { font-size: 32px; line-height: 1; }
+
+  .hc-rank-badge {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-champion { background: rgba(255,215,0,0.15); color: #d97706; }
+  .badge-runnerup { background: rgba(148,163,184,0.15); color: #64748b; }
+  .badge-third { background: rgba(245,158,11,0.15); color: #b45309; }
+  .badge-fourth { background: rgba(124,58,237,0.1); color: #7c3aed; }
+  .badge-fifth { background: rgba(124,58,237,0.08); color: #6d28d9; }
+
+  .hc-name {
+    font-family: var(--heading-font);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .hc-score-row { display: flex; justify-content: center; margin-bottom: 16px; }
+
+  .hc-circle svg { display: block; }
+
+  /* PROGRESS BARS */
+  .hc-progress-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+
+  .hc-progress-row {
+    display: grid;
+    grid-template-columns: 1fr 32px;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .hc-progress-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hc-progress-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: right;
+  }
+
+  .hc-progress-track {
+    grid-column: 1 / -1;
+    height: 8px;
+    background: var(--card3);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .hc-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.8s ease;
+  }
+
+  .hc-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card2);
+    color: var(--text);
+    font-family: var(--body-font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .hc-btn:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-1px); }
+
+  /* CHAMPION CARD */
+  .champion-card {
+    border-color: rgba(255,215,0,0.4);
+    box-shadow: 0 0 40px rgba(255,215,0,0.15), 0 12px 40px rgba(0,0,0,0.06);
+  }
+
+  .champion-card:hover { border-color: rgba(255,215,0,0.6); box-shadow: 0 0 60px rgba(255,215,0,0.25), 0 20px 60px rgba(0,0,0,0.1); }
+
+  .champion-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 50%, rgba(255,215,0,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    animation: champPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes champPulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  [data-theme="vibrant"] body {
+    font-weight: 600;
+    background: linear-gradient(135deg, #faf7ff, #f4f0ff, #fffdf8);
+  }
 
   [data-theme="vibrant"] .nav-tab { font-weight: 600; }
   [data-theme="vibrant"] .nav-tab.active { font-weight: 700; }
@@ -471,7 +657,7 @@
   }
 
   [data-theme="vibrant"] .card::before {
-    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.15), rgba(236,72,153,0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.12), rgba(225,29,143,0.12), transparent);
   }
 
   [data-theme="vibrant"] .header {
@@ -497,11 +683,11 @@
   [data-theme="vibrant"] .login-card { background: rgba(255,255,255,0.95); }
   [data-theme="vibrant"] .login-input { background: #f8f4ff; border-color: rgba(124,58,237,0.12); color: #1e1145; }
   [data-theme="vibrant"] .login-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
-  [data-theme="vibrant"] .login-btn { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+  [data-theme="vibrant"] .login-btn { background: linear-gradient(135deg, #7c3aed, #e11d8f); }
   [data-theme="vibrant"] .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(124,58,237,0.3); }
-  [data-theme="vibrant"] .login-logo { background: linear-gradient(135deg, #7c3aed, #ec4899); }
-  [data-theme="vibrant"] .login-title { color: #0f0728; }
-  [data-theme="vibrant"] .login-subtitle { color: #5b4a82; }
+  [data-theme="vibrant"] .login-logo { background: linear-gradient(135deg, #7c3aed, #e11d8f); }
+  [data-theme="vibrant"] .login-title { color: #0d001a; }
+  [data-theme="vibrant"] .login-subtitle { color: #4a3670; }
 
   [data-theme="vibrant"] .podium-spot { background: #ffffff; border-color: rgba(124,58,237,0.1); }
   [data-theme="vibrant"] .podium-1 { border-color: #d97706; box-shadow: 0 0 30px rgba(217,119,6,0.15); }
@@ -514,19 +700,19 @@
 
   [data-theme="vibrant"] .form-select:focus, [data-theme="vibrant"] .form-input:focus, [data-theme="vibrant"] .form-textarea:focus {
     border-color: #7c3aed;
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+    box-shadow: 0 0 0 4px rgba(124,58,237,0.12);
   }
 
-  [data-theme="vibrant"] table th { background: #f3edff; color: #5b3e9e; }
-  [data-theme="vibrant"] table td { border-bottom-color: rgba(124,58,237,0.06); }
-  [data-theme="vibrant"] table tr:hover td { background: rgba(124,58,237,0.03); }
+  [data-theme="vibrant"] table th { background: #eee4ff; color: #4a3670; }
+  [data-theme="vibrant"] table td { border-bottom-color: rgba(124,58,237,0.08); }
+  [data-theme="vibrant"] table tr:hover td { background: rgba(124,58,237,0.04); }
 
-  [data-theme="vibrant"] .history-table th { background: #f3edff; color: #5b3e9e; }
-  [data-theme="vibrant"] .history-table td { border-bottom-color: rgba(124,58,237,0.06); }
-  [data-theme="vibrant"] .history-table tr:hover td { background: rgba(124,58,237,0.03); }
+  [data-theme="vibrant"] .history-table th { background: #eee4ff; color: #4a3670; }
+  [data-theme="vibrant"] .history-table td { border-bottom-color: rgba(124,58,237,0.08); }
+  [data-theme="vibrant"] .history-table tr:hover td { background: rgba(124,58,237,0.04); }
 
   [data-theme="vibrant"] .award-card { background: #ffffff; }
-  [data-theme="vibrant"] .award-icon { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+  [data-theme="vibrant"] .award-icon { background: linear-gradient(135deg, #7c3aed, #e11d8f); }
 
   [data-theme="vibrant"] .badge { background: rgba(124,58,237,0.1); color: #7c3aed; }
 
@@ -542,13 +728,14 @@
   /* CARDS */
   .card {
     background: var(--card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 24px;
     padding: 24px;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
   }
 
   .card::before {
@@ -856,14 +1043,23 @@
     margin-top: 32px;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.04);
   }
 
   .academic-summary-title {
-    font-size: 1rem;
+    font-family: var(--heading-font);
+    font-size: 22px;
     font-weight: 700;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 16px;
   }
 
   .academic-summary-table {
@@ -871,47 +1067,69 @@
     border-collapse: separate;
     border-spacing: 0;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 16px;
     border: 1px solid var(--border);
   }
 
+  .academic-summary-table thead { position: sticky; top: 0; z-index: 5; }
+
   .academic-summary-table th {
-    padding: 10px 12px;
+    padding: 14px 16px;
     text-align: left;
-    font-size: 0.65rem;
+    font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
     color: var(--muted);
     background: var(--card2);
     font-weight: 700;
+    border-bottom: 2px solid var(--border);
   }
+
+  .academic-summary-table th:first-child { border-radius: 14px 0 0 0; }
+  .academic-summary-table th:last-child { border-radius: 0 14px 0 0; }
 
   .academic-summary-table td {
-    padding: 10px 12px;
-    font-size: 0.85rem;
-    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
     vertical-align: middle;
+    transition: background 0.2s ease;
   }
 
-  .academic-summary-table tr:hover td {
-    background: rgba(56,189,248,0.03);
+  .academic-summary-table tbody tr:nth-child(even) td {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .academic-summary-table tbody tr:last-child td:first-child { border-radius: 0 0 0 14px; }
+  .academic-summary-table tbody tr:last-child td:last-child { border-radius: 0 0 14px 0; }
+
+  .academic-summary-table tbody tr:hover td {
+    background: rgba(124,58,237,0.04);
   }
 
   .academic-summary-table .cls-cell {
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 15px;
     white-space: nowrap;
+    color: var(--text);
   }
 
   .academic-summary-table .house-cell {
     white-space: nowrap;
   }
 
+  .hc-event-name {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 2px;
+    font-weight: 500;
+  }
+
   .academic-summary-table .no-data {
     text-align: center;
-    padding: 32px;
+    padding: 40px;
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 15px;
   }
 
   .rank-badge {
@@ -1364,6 +1582,8 @@
   @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
     .charts-grid { grid-template-columns: 1fr; }
+    .house-cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .section-title { font-size: 32px; }
   }
 
   @media (max-width: 768px) {
@@ -1402,12 +1622,14 @@
     .nav-tabs::-webkit-scrollbar { display: none; }
     .nav-tab { padding: 6px 14px; font-size: 0.75rem; white-space: nowrap; }
     .container { padding: 12px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .stat-box { padding: 12px; }
-    .stat-total { font-size: 1.5rem; }
-    .podium { flex-direction: column; align-items: center; padding: 20px 0; }
-    .podium-spot { order: unset !important; width: 100%; max-width: 280px; min-height: auto; }
-    .podium-spot.spot-1 { transform: none; }
+    .section-title { font-size: 26px; }
+    .dash-title-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .dash-stats-bar { flex-direction: column; gap: 8px; }
+    .dash-stat { padding: 12px 20px; min-width: auto; }
+    .dash-stat-value { font-size: 22px; }
+    .house-cards-grid { grid-template-columns: 1fr; gap: 16px; }
+    .hc-name { font-size: 24px; }
+    .hc-circle svg { width: 110px; height: 110px; }
     .form-row { grid-template-columns: 1fr; }
     .donut-container { flex-direction: column; }
     .monthly-podium { flex-direction: column; align-items: center; }
@@ -1431,6 +1653,12 @@
   }
 
   @media (max-width: 480px) {
+    .section-title { font-size: 22px; }
+    .house-cards-grid { gap: 12px; }
+    .house-card { padding: 16px; }
+    .hc-name { font-size: 20px; }
+    .hc-circle svg { width: 100px; height: 100px; }
+    .hc-progress-label { font-size: 11px; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .house-detail-grid { grid-template-columns: 1fr; }
     .awards-grid { grid-template-columns: 1fr; }
@@ -1511,16 +1739,7 @@
 <div class="container">
 
   <!-- DASHBOARD VIEW -->
-  <div class="view active" id="dashboardView">
-    <div class="podium-section">
-      <div class="section-header">
-        <div class="section-title">Championship Standings (Cumulative)</div>
-        <div style="font-size:0.8rem;color:var(--muted)" id="seasonLabel">Season 2025-26</div>
-      </div>
-      <div class="podium" id="podium"></div>
-    </div>
-    <div class="stats-grid" id="statsGrid"></div>
-  </div>
+  <div class="view active" id="dashboardView"></div>
 
   <!-- MONTHLY VIEW -->
   <div class="view" id="monthlyView">
@@ -1913,6 +2132,12 @@ const UNIQUE_PTS = {
 
 const DISCIPLINARY_PTS = {
   'Best Discipline': [2,0,0,0,0], 'Attendance Bonus': [1,-1,0,0,0], 'Code of Conduct': [-2,-4,-10,0,0]
+};
+
+const CAT_LABELS = {
+  'Academics':'Academic Excellence','Sports':'Sports Achievement',
+  'Co-Curricular':'Co-Curricular Activities',
+  'Unique Contributions':'Leadership & Service','Disciplinary':'Discipline & Conduct'
 };
 
 // ===== API HELPERS =====
@@ -2343,9 +2568,11 @@ function renderNavTabs() {
 
 function renderDashboard() {
   const sorted = getSorted();
-  const maxPts = Math.max(...sorted.map(s=>s.total),1);
+  const maxPts = Math.max(...sorted.map(s=>s.total), 1);
+  const totalPoints = entries.reduce((s,e) => s + e.points, 0);
+  const topHouse = sorted[0]?.house || '-';
+  const totalStudents = studentData ? studentData.length : 0;
 
-  // Assign ranks (ties get same rank)
   let ranks = [];
   let prevTotal = null, prevRank = 0;
   sorted.forEach((s, i) => {
@@ -2353,47 +2580,77 @@ function renderDashboard() {
     ranks.push(prevRank);
   });
 
-  // Podium: top 3 ranks, individual boxes
-  const podiumRanks = [1, 2, 3];
-  const podiumOrder = [];
-  podiumRanks.forEach(r => {
-    sorted.forEach((s, i) => {
-      if(ranks[i] === r) podiumOrder.push({...s, rank: r});
-    });
-  });
+  const rankBadges = {
+    1: { label: 'Champion', icon: '🏆', cls: 'badge-champion' },
+    2: { label: 'Runner-Up', icon: '🥈', cls: 'badge-runnerup' },
+    3: { label: 'Third Place', icon: '🥉', cls: 'badge-third' },
+    4: { label: 'Fourth Position', icon: '⭐', cls: 'badge-fourth' },
+    5: { label: 'Fifth Position', icon: '⭐', cls: 'badge-fifth' }
+  };
 
-  const spotClasses = ['spot-1', 'spot-2', 'spot-3'];
-  const medals = {1: '🥇', 2: '🥈', 3: '🥉'};
+  const houseEmojis = { Courage:'🦁', Truth:'⚖️', Compassion:'💚', Honesty:'🔵', Loyalty:'⭐' };
+  const viewBtns = ['View Report', 'Explore Insights', 'View Performance', 'See Statistics', 'View Details'];
 
-  document.getElementById('podium').innerHTML = podiumOrder.map((item) => {
-    const rankIdx = item.rank - 1;
-    const catBreakdown = Object.keys(CATS).map(c =>
-      `<div class="podium-cat"><span>${c}</span><span>${getCatTotal(item.house,c)}</span></div>`
-    ).join('');
+  const catLabels = CAT_LABELS;
+
+  // Summary stats row
+  const statsHtml = `
+    <div class="dash-stats-bar">
+      <div class="dash-stat"><span class="dash-stat-value">${totalStudents}</span><span class="dash-stat-label">Students</span></div>
+      <div class="dash-stat"><span class="dash-stat-value" style="color:${HCOLOR[topHouse]}">${topHouse}</span><span class="dash-stat-label">Top House</span></div>
+      <div class="dash-stat"><span class="dash-stat-value">${totalPoints}</span><span class="dash-stat-label">Total Points</span></div>
+    </div>`;
+
+  // House cards
+  const cardsHtml = sorted.map((h, i) => {
+    const rank = ranks[i];
+    const badge = rankBadges[rank];
+    const pct = Math.min((h.total / maxPts) * 100, 100);
+    const r = 54, circ = 2 * Math.PI * r;
+    const offset = circ - (pct / 100) * circ;
+
+    const cats = Object.keys(CATS);
+    const catMax = Math.max(...cats.map(c => getCatTotal(h.house, c)), 1);
+    const progressBars = cats.map(c => `
+      <div class="hc-progress-row">
+        <span class="hc-progress-label">${catLabels[c] || c}</span>
+        <span class="hc-progress-value">${getCatTotal(h.house, c)}</span>
+        <div class="hc-progress-track"><div class="hc-progress-fill" style="width:${(getCatTotal(h.house,c)/catMax)*100}%;background:${CATS[c].color}"></div></div>
+      </div>`).join('');
+
     return `
-      <div class="podium-spot ${spotClasses[rankIdx]}">
-        <div class="medal">${medals[item.rank]}</div>
-        <div class="podium-house-name" style="color:${HCOLOR[item.house]}">${item.house}</div>
-        <div class="podium-points">${item.total}</div>
-        <div class="podium-points-label">Total Points</div>
-        <div class="podium-bar" style="width:${(item.total/maxPts)*100}%;background:${HCOLOR[item.house]}"></div>
-        <div class="podium-categories">${catBreakdown}</div>
-      </div>`;
-  }).join('');
-
-  // Stats cards
-  document.getElementById('statsGrid').innerHTML = sorted.map((h,i) => {
-    const best = getMaxCat(h.house);
-    return `
-      <div class="stat-box">
-        <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
-        <div class="stat-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
-        <div class="stat-bar">
-          <div class="stat-bar-fill" style="width:${(h.total/maxPts)*100}%;background:${HCOLOR[h.house]}"></div>
+      <div class="house-card ${rank === 1 ? 'champion-card' : ''}">
+        ${rank === 1 ? '<div class="champion-glow"></div>' : ''}
+        <div class="hc-top">
+          <span class="hc-emoji">${houseEmojis[h.house] || '🏠'}</span>
+          <span class="hc-rank-badge ${badge.cls}">${badge.icon} ${badge.label}</span>
         </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+        <div class="hc-name" style="color:${HCOLOR[h.house]}">${h.house} House</div>
+        <div class="hc-score-row">
+          <div class="hc-circle">
+            <svg width="130" height="130" viewBox="0 0 130 130">
+              <circle cx="65" cy="65" r="${r}" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="8"/>
+              <circle cx="65" cy="65" r="${r}" fill="none" stroke="${HCOLOR[h.house]}" stroke-width="8"
+                stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="rotate(-90 65 65)" stroke-linecap="round" style="transition:stroke-dashoffset 1.2s ease"/>
+              <text x="65" y="61" text-anchor="middle" fill="${HCOLOR[h.house]}" font-weight="800" font-size="34" font-family="var(--heading-font)">${h.total}</text>
+              <text x="65" y="80" text-anchor="middle" fill="var(--muted)" font-weight="500" font-size="12" font-family="var(--body-font)">pts</text>
+            </svg>
+          </div>
+        </div>
+        <div class="hc-progress-section">${progressBars}</div>
+        <button class="hc-btn" onclick="openHouseDetail('${h.house}')">${viewBtns[i % viewBtns.length]}</button>
       </div>`;
   }).join('');
+
+  document.getElementById('dashboardView').innerHTML = `
+    <div class="dash-header">
+      <div class="dash-title-row">
+        <div class="section-title">🏆 House Performance Dashboard</div>
+        <div class="section-subtitle" id="seasonLabel">Term 2 • Academic Year 2026–27</div>
+      </div>
+      ${statsHtml}
+    </div>
+    <div class="house-cards-grid">${cardsHtml}</div>`;
 }
 
 function renderHouseDetails() {
@@ -2409,7 +2666,7 @@ function renderHouseDetails() {
       const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;
       return `
         <div class="cat-bar-row">
-          <div class="cat-bar-label">${c}</div>
+          <div class="cat-bar-label">${CAT_LABELS[c] || c}</div>
           <div class="cat-bar-track">
             <div class="cat-bar-fill" style="width:${pct}%;background:${CATS[c].color}"></div>
           </div>
@@ -2471,7 +2728,6 @@ function renderFromEntries(container, classEntries) {
     classEventData[cls][event][e.house].count++;
   });
 
-  // Supplement with studentData avg scores if available
   const studentAvgs = {};
   if(studentData && studentData.length > 0) {
     studentData.forEach(s => {
@@ -2493,11 +2749,12 @@ function renderFromEntries(container, classEntries) {
   const acadPoints = CATS.Academics.points;
 
   let html = `<div class="academic-summary">
-    <div class="academic-summary-title">📊 Academic Performance — Class Wise</div>
+    <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
+    <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Class</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+        <th>Grade</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2533,7 +2790,7 @@ function renderFromEntries(container, classEntries) {
         }
 
         html += `<td class="house-cell" style="color:${HCOLOR[h]}">
-          <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${event}</div>
+          <div class="hc-event-name">${event}</div>
           ${avgHtml}<span style="font-size:0.7rem;color:var(--muted)">${label}</span>
           <span style="font-weight:700;font-size:0.85rem"> ${pts}pts</span>
         </td>`;
@@ -2542,7 +2799,7 @@ function renderFromEntries(container, classEntries) {
     });
   });
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
   container.innerHTML = html;
 }
 
@@ -2567,11 +2824,12 @@ function renderFromStudentData(container) {
   const acadPoints = CATS.Academics.points;
 
   let html = `<div class="academic-summary">
-    <div class="academic-summary-title">📊 Academic Performance — Class Wise</div>
+    <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
+    <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Class</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+        <th>Grade</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2603,7 +2861,7 @@ function renderFromStudentData(container) {
     html += `</tr>`;
   });
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
   container.innerHTML = html;
 }
 
@@ -2635,11 +2893,12 @@ function renderFromAcadEntries(container, acadEntries) {
   const acadPoints = CATS.Academics.points;
 
   let html = `<div class="academic-summary">
-    <div class="academic-summary-title">📊 Academic Performance — Event Wise</div>
+    <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
+    <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Class</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+        <th>Grade</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   events.forEach(event => {
@@ -2670,7 +2929,7 @@ function renderFromAcadEntries(container, acadEntries) {
     html += `</tr>`;
   });
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
   container.innerHTML = html;
 }
 
@@ -2697,11 +2956,12 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   const acadPoints = CATS.Academics.points;
 
   let html = `<div class="academic-summary">
-    <div class="academic-summary-title">📊 Academic Performance — Class Wise</div>
+    <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
+    <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Class</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+        <th>Grade</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2736,7 +2996,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     });
   });
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
   container.innerHTML = html;
 }
 
@@ -2750,7 +3010,7 @@ function renderComparison() {
       <tr>
         <th>#</th>
         <th>House</th>
-        ${cats.map(c=>`<th style="color:${CATS[c].color}">${c}</th>`).join('')}
+        ${cats.map(c=>`<th style="color:${CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}
         <th>Total</th>
       </tr>
     </thead>
@@ -3026,7 +3286,7 @@ function renderMonthlyStats() {
 
   document.getElementById('monthlyPodium').innerHTML = podiumOrder.map(item => {
     const catBreakdown = cats.map(c =>
-      `<div class="podium-cat"><span>${c}</span><span>${getCatTotalMonth(item.house, c, currentMonth)}</span></div>`
+      `<div class="podium-cat"><span>${CAT_LABELS[c] || c}</span><span>${getCatTotalMonth(item.house, c, currentMonth)}</span></div>`
     ).join('');
     return `
       <div class="podium-spot ${spotClasses[item.rank - 1]}">
@@ -3052,12 +3312,12 @@ function renderMonthlyStats() {
         <div class="stat-bar">
           <div class="stat-bar-fill" style="width:${(h.total / maxPts) * 100}%;background:${HCOLOR[h.house]}"></div>
         </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${CAT_LABELS[best.cat] || best.cat} (${best.val})</div>
       </div>`;
   }).join('');
 
   // Monthly comparison table
-  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CATS[c].color}">${c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
   sorted.forEach((h, i) => {
     const rankBadge = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
     tableHtml += `<tr>
@@ -3076,7 +3336,7 @@ function renderMonthlyStats() {
     <tr>
       <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
       <td><span class="house-tag" style="background:${HBGCOLOR[e.house]};color:${HCOLOR[e.house]}">${e.house}</span></td>
-      <td>${e.category}</td>
+      <td>${CAT_LABELS[e.category] || e.category}</td>
       <td style="color:var(--muted)">${e.subCategory || '-'}</td>
       <td>${e.event || '-'}</td>
       <td class="${e.points >= 0 ? 'points-positive' : 'points-negative'}">${e.points >= 0 ? '+' : ''}${e.points}</td>
@@ -3113,7 +3373,7 @@ function renderAwards() {
     { icon:'⭐', title:'Highest Single Score', winner:bestEntry?.house||'-', detail:bestEntry?`${bestEntry.points} pts — ${bestEntry.event||bestEntry.category}`:'No entries yet' },
     ...catLeaders.map(cl => ({
       icon: cl.cat==='Academics'?'📚':cl.cat==='Sports'?'🏅':cl.cat==='Co-Curricular'?'🎨':cl.cat==='Unique Contributions'?'🌟':'⚖️',
-      title:`${cl.cat} Leader`,
+      title:`${CAT_LABELS[cl.cat] || cl.cat} Leader`,
       winner: cl.house,
       detail: `${cl.val} points`,
       color: cl.color
@@ -3149,7 +3409,7 @@ function renderHistory() {
 
   // Render filter chips
   document.getElementById('filterChips').innerHTML = ['All',...Object.keys(CATS)].map(c =>
-    `<button class="filter-chip ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c}</button>`
+    `<button class="filter-chip ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c === 'All' ? 'All Categories' : (CAT_LABELS[c] || c)}</button>`
   ).join('');
 
   if(filtered.length === 0) {
@@ -3168,7 +3428,7 @@ function renderHistory() {
     <tr>
       <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
       <td><span class="house-tag" style="background:${HBGCOLOR[e.house]};color:${HCOLOR[e.house]}">${e.house}</span></td>
-      <td>${e.category}</td>
+      <td>${CAT_LABELS[e.category] || e.category}</td>
       <td style="color:var(--muted)">${e.subCategory||'-'}</td>
       <td>${e.event||'-'}</td>
       <td class="${e.points>=0?'points-positive':'points-negative'}">${e.points>=0?'+':''}${e.points}</td>
@@ -3193,7 +3453,7 @@ function populateSelects() {
   const catKeys = Object.keys(CATS);
   ['addCategory','bulkCategory'].forEach(id => {
     const el = document.getElementById(id);
-    if(el) el.innerHTML = catKeys.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(el) el.innerHTML = catKeys.map(c=>`<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
   });
   ['addHouse'].forEach(id => {
     const el = document.getElementById(id);
@@ -3583,7 +3843,7 @@ function renderPreview() {
   // Re-populate category dropdown
   const catKeys = Object.keys(CATS);
   const catSelect = document.getElementById('importCategory');
-  catSelect.innerHTML = catKeys.map(c => `<option value="${c}">${c}</option>`).join('');
+  catSelect.innerHTML = catKeys.map(c => `<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
 
   // Render student data table at bottom
   let stuHtml = `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
@@ -3869,7 +4129,7 @@ function openHouseDetail(house) {
   const catKeys = Object.keys(CATS);
   let filterHtml = `<button class="btn btn-sm btn-primary" onclick="filterHouseDetail('all')" data-filter="all">All</button>`;
   catKeys.forEach(c => {
-    filterHtml += `<button class="btn btn-sm btn-ghost" onclick="filterHouseDetail('${c}')" data-filter="${c}">${c}</button>`;
+    filterHtml += `<button class="btn btn-sm btn-ghost" onclick="filterHouseDetail('${c}')" data-filter="${c}">${CAT_LABELS[c] || c}</button>`;
   });
   filterHtml += `<span style="border-left:1px solid var(--border);margin:0 4px"></span>`;
   filterHtml += `<select class="form-select" id="houseAcadClassFilter" onchange="filterHouseDetailClass()" style="width:auto;font-size:0.75rem;padding:4px 8px"><option value="all">All Classes</option></select>`;
@@ -3939,7 +4199,7 @@ function renderHouseDetailTable(house, filterCat, filterClass) {
       const catColor = CATS[e.category]?.color || 'var(--muted)';
       html += `<tr>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${new Date(e.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid var(--border)"><span style="color:${catColor};font-weight:600">${e.category}</span></td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)"><span style="color:${catColor};font-weight:600">${CAT_LABELS[e.category] || e.category}</span></td>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e.event || '-'}</td>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || '-'}</td>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${e.points >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700">${e.points >= 0 ? '+' : ''}${e.points}</td>

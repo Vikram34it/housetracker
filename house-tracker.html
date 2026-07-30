@@ -2437,7 +2437,7 @@ function renderFromAcadEntries(container, acadEntries) {
     });
   }
 
-  const events = Object.keys(eventData);
+  const events = Object.keys(eventData).sort();
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
   const acadPoints = CATS.Academics.points;
 
@@ -2445,6 +2445,7 @@ function renderFromAcadEntries(container, acadEntries) {
     <div class="academic-summary-title">📊 Academic Performance — Event Wise</div>
     <table class="academic-summary-table">
       <thead><tr>
+        <th>Class</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
       </tr></thead><tbody>`;
 
@@ -2458,7 +2459,7 @@ function renderFromAcadEntries(container, acadEntries) {
     const rankMap = {};
     houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-    html += `<tr>`;
+    html += `<tr><td class="cls-cell" style="color:var(--muted)">-</td>`;
     HOUSES.forEach(h => {
       const d = houseData[h];
       if(!d || d.count === 0) {

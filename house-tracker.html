@@ -251,6 +251,11 @@
     color: var(--accent);
   }
 
+  .role-viewer {
+    background: rgba(148,163,184,0.15);
+    color: #94a3b8;
+  }
+
   /* HEADER */
   .header {
     background: rgba(15,23,42,0.8);
@@ -1583,7 +1588,8 @@
           <div class="form-group">
             <label class="form-label">Role</label>
             <select class="form-select" id="newRole">
-              <option value="user">User (View Only)</option>
+              <option value="user">User (Add Points)</option>
+              <option value="viewer">Viewer (View Only)</option>
               <option value="admin">Admin (Full Access)</option>
             </select>
           </div>
@@ -1801,6 +1807,7 @@ function updateUserInfo() {
 
 function applyRoleRestrictions() {
   const isAdmin = currentUser && currentUser.role === 'admin';
+  const isViewer = currentUser && currentUser.role === 'viewer';
   
   // Hide/show admin-only elements
   document.querySelectorAll('.admin-only').forEach(el => {
@@ -1812,6 +1819,12 @@ function applyRoleRestrictions() {
       el.style.display = 'none';
     }
   });
+  
+  // Hide Add Points button for viewers
+  const addPointsBtn = document.querySelector('button[onclick="openModal(\'add\')"]');
+  if(addPointsBtn) {
+    addPointsBtn.style.display = isViewer ? 'none' : '';
+  }
   
   // Disable history delete buttons for non-admins
   document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -3418,7 +3431,7 @@ function renderUsersTable() {
       <td><strong>${user.username}</strong></td>
       <td>${user.fullName}</td>
       <td>
-        <span class="role-badge ${user.role === 'admin' ? 'role-admin' : 'role-user'}">
+        <span class="role-badge ${user.role === 'admin' ? 'role-admin' : user.role === 'viewer' ? 'role-viewer' : 'role-user'}">
           ${user.role}
         </span>
       </td>
@@ -3529,8 +3542,8 @@ function editUser(username) {
   if(!user) return;
   
   // Simple edit - just change role
-  const newRole = prompt(`Change role for "${user.username}" (admin/user):`, user.role);
-  if(newRole && (newRole === 'admin' || newRole === 'user')) {
+  const newRole = prompt(`Change role for "${user.username}" (admin/user/viewer):`, user.role);
+  if(newRole && (newRole === 'admin' || newRole === 'user' || newRole === 'viewer')) {
     updateUser(username, {role: newRole});
   }
 }

@@ -27,7 +27,8 @@ A live inter-house points tracker that uses Google Sheets as a database. Support
 | Role | Permissions |
 |------|-------------|
 | **Admin** | Full access: Add/edit/delete entries, manage users, import Excel, reset data |
-| **User** | View only: Can view dashboard, reports, and history (no editing) |
+| **User** | Can add points and view dashboard, reports, and history |
+| **Viewer** | View only: Can view dashboard, reports, and history (no editing, no add points) |
 
 ### Managing Users (Admin Only)
 

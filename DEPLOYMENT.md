@@ -72,7 +72,8 @@ This guide will help you deploy the House Tracker with Google Sheets as the data
 3. Enter username, full name, password, and role
 4. **User roles:**
    - **Admin**: Full access (add/edit/delete entries, manage users)
-   - **User**: View only (can view reports but not modify data)
+   - **User**: Can add points and view reports
+   - **Viewer**: View only (can view reports but not modify data or add points)
 
 ## Step 8: Share the Sheet (Optional)
 

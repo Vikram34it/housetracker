@@ -2411,11 +2411,31 @@ function renderFromAcadEntries(container, acadEntries) {
   acadEntries.forEach(e => {
     const event = e.event || 'General';
     if(!eventData[event]) eventData[event] = {};
-    if(!eventData[event][e.house]) eventData[event][e.house] = { points: 0, count: 0, posSum: 0 };
+    if(!eventData[event][e.house]) eventData[event][e.house] = { 
+      points: 0, count: 0, posSum: 0, avgSum: 0, avgCount: 0 
+    };
     eventData[event][e.house].points += e.points || 0;
     eventData[event][e.house].count++;
     if(e.position) eventData[event][e.house].posSum += e.position;
+    // Parse avg from note field
+    if(e.note) {
+      const m = e.note.match(/Avg:\s*([\d.]+)/i);
+      if(m) {
+        eventData[event][e.house].avgSum += parseFloat(m[1]);
+        eventData[event][e.house].avgCount++;
+      }
+    }
   });
+
+  // Also check studentData for avg scores per class
+  const studentHouseAvgs = {};
+  if(studentData && studentData.length > 0) {
+    studentData.forEach(s => {
+      if(!studentHouseAvgs[s.house]) studentHouseAvgs[s.house] = { total: 0, count: 0 };
+      studentHouseAvgs[s.house].total += s.total || 0;
+      studentHouseAvgs[s.house].count++;
+    });
+  }
 
   const events = Object.keys(eventData);
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
@@ -2448,10 +2468,19 @@ function renderFromAcadEntries(container, acadEntries) {
       const rank = rankMap[h];
       const label = rankLabels[rank] || `${rank+1}th`;
       const pts = acadPoints[rank] || 0;
-      const avgPos = d.count > 0 ? (d.posSum / d.count).toFixed(1) : '-';
+
+      // Get avg from note or studentData
+      let avgStr = '';
+      if(d.avgCount > 0) {
+        avgStr = (d.avgSum / d.avgCount).toFixed(1);
+      } else if(studentHouseAvgs[h]) {
+        const sa = studentHouseAvgs[h];
+        avgStr = (sa.total / sa.count).toFixed(1);
+      }
 
       html += `<td class="house-cell" style="color:${HCOLOR[h]}">
         <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${event}</div>
+        ${avgStr ? `<span style="font-weight:700;font-size:0.85rem">${avgStr}</span> ` : ''}
         <span style="font-size:0.7rem;color:var(--muted)">${label}</span>
         <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
       </td>`;
@@ -3488,23 +3517,56 @@ async function importData() {
     newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
   });
 
-  // Add overall points per house
-  results.forEach(r => {
-    if(r.points > 0) {
-      newEntries.push({
-        id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
-        house: r.house,
-        category: category,
-        subCategory: 'Overall',
-        position: r.position,
-        points: r.points,
-        event: examName,
-        note: `Avg: ${r.avgDisplay} | ${r.count} students | ${r.classCount} class${r.classCount !== 1 ? 'es' : ''} (per-class avg)`,
-        date: new Date().toISOString(),
-        exam: examName
-      });
-      count++;
+  // Add per-class entries with Grade subCategories
+  const classHouseData = {};
+  rows.forEach(row => {
+    const house = String(row[columnMapping.house] || '').trim();
+    const name = String(row[columnMapping.name] || '').trim();
+    const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
+    if(!HOUSES.includes(house) || !name) return;
+    let total = 0;
+    if(columnMapping.total >= 0) {
+      total = parseFloat(row[columnMapping.total]) || 0;
     }
+    columnMapping.subjects.forEach((si) => {
+      if(columnMapping.total < 0) total += (parseFloat(row[si]) || 0);
+    });
+    if(total < 0) return;
+    if(!classHouseData[cls]) classHouseData[cls] = {};
+    if(!classHouseData[cls][house]) classHouseData[cls][house] = { total: 0, count: 0 };
+    classHouseData[cls][house].total += total;
+    classHouseData[cls][house].count++;
+  });
+
+  const acadPts = CATS['Academics'].points;
+  const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
+  Object.keys(classHouseData).forEach(cls => {
+    const houses = HOUSES.map(h => ({
+      house: h,
+      avg: classHouseData[cls][h] ? (classHouseData[cls][h].total / classHouseData[cls][h].count) : 0,
+      count: classHouseData[cls][h] ? classHouseData[cls][h].count : 0
+    }));
+    houses.sort((a, b) => b.avg - a.avg);
+
+    houses.forEach((h, i) => {
+      if(h.count === 0) return;
+      const pts = acadPts[i] || 0;
+      if(pts > 0) {
+        newEntries.push({
+          id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
+          house: h.house,
+          category: category,
+          subCategory: 'Grade ' + cls,
+          position: i + 1,
+          points: pts,
+          event: examName,
+          note: `Avg: ${h.avg.toFixed(1)} | ${h.count} students`,
+          date: new Date().toISOString(),
+          exam: examName
+        });
+        count++;
+      }
+    });
   });
 
   try {

@@ -19,6 +19,26 @@
     --loyalty-bg: rgba(234,179,8,0.12);
     --truth: #8B5CF6;
     --truth-bg: rgba(139,92,246,0.12);
+    --bg: #f8fafc;
+    --bg2: #f1f5f9;
+    --card: rgba(255,255,255,0.85);
+    --card2: #ffffff;
+    --card3: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --accent: #0ea5e9;
+    --accent2: #6366f1;
+    --gold: #f59e0b;
+    --silver: #94a3b8;
+    --bronze: #d97706;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --glass: rgba(255,255,255,0.7);
+    --border: rgba(0,0,0,0.08);
+    --shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+  }
+
+  [data-theme="dark"] {
     --bg: #0a0e1a;
     --bg2: #111827;
     --card: rgba(30,41,59,0.7);
@@ -56,10 +76,15 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(ellipse at 30% 20%, rgba(56,189,248,0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(129,140,248,0.06) 0%, transparent 50%);
+    background: radial-gradient(ellipse at 30% 20%, rgba(14,165,233,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(99,102,241,0.05) 0%, transparent 50%);
     z-index: -1;
     animation: bgPulse 15s ease-in-out infinite alternate;
+  }
+
+  html[data-theme="dark"] body::before {
+    background: radial-gradient(ellipse at 30% 20%, rgba(56,189,248,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(129,140,248,0.06) 0%, transparent 50%);
   }
 
   @keyframes bgPulse {
@@ -1305,6 +1330,7 @@
     </label>
     <button class="btn btn-ghost admin-only" onclick="exportCSV()" title="Export CSV">Export</button>
     <button class="btn btn-danger btn-icon admin-only" onclick="confirmReset()" title="Reset All">Reset</button>
+    <button class="btn btn-ghost" onclick="toggleTheme()" id="themeToggle" title="Toggle Theme">🌙</button>
     <button class="btn btn-ghost" onclick="handleLogout()" title="Logout">Logout</button>
   </div>
 </div>
@@ -1704,6 +1730,7 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9WHu9aKgfDwME7kXbyvsT3pTl5RlOhpZYXfxfCUdlriKYPv_4ww1rKjliEzLvhvSL/exec';
 
 // ===== CONSTANTS =====
+applyTheme();
 const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
 const HCLASS = { Compassion:'compassion', Courage:'courage', Honesty:'honesty', Loyalty:'loyalty', Truth:'truth' };
 const HCOLOR = { Compassion:'#22C55E', Courage:'#EF4444', Honesty:'#3B82F6', Loyalty:'#EAB308', Truth:'#8B5CF6' };
@@ -1899,10 +1926,27 @@ function isAdmin() {
   return currentUser && currentUser.role === 'admin';
 }
 
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('vivaTheme', newTheme);
+  document.getElementById('themeToggle').textContent = isDark ? '🌙' : '☀️';
+}
+
+function applyTheme() {
+  const saved = localStorage.getItem('vivaTheme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('themeToggle');
+  if(btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+
 // ===== INITIALIZATION =====
 async function initializeApp() {
   try {
     showSaving();
+    applyTheme();
     
     // Load data from Google Sheets
     const [entriesData, studentsData, configData] = await Promise.all([

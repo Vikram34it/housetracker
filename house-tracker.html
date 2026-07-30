@@ -2236,15 +2236,21 @@ function renderAcademicSummary() {
   const gradeSubs = CATS.Academics.subs.filter(s => s.startsWith('Grade'));
   const classEntries = acadEntries.filter(e => gradeSubs.includes(e.subCategory));
 
-  // If we have Grade-based entries, use them (with event column)
+  // 1) Grade-based entries → class + event breakdown
   if(classEntries.length > 0) {
     renderFromEntries(container, classEntries);
     return;
   }
 
-  // Fallback to studentData if available
+  // 2) studentData from Excel imports → class-wise avg scores
   if(studentData && studentData.length > 0) {
     renderFromStudentData(container);
+    return;
+  }
+
+  // 3) Any academic entries → show grouped by event
+  if(acadEntries.length > 0) {
+    renderFromAcadEntries(container, acadEntries);
     return;
   }
 
@@ -2391,6 +2397,64 @@ function renderFromStudentData(container) {
         <span style="font-weight:700;font-size:1rem">${houseAvgs[rank].avg}</span>
         <span style="font-size:0.7rem;color:var(--muted)"> ${label}</span>
         <span style="font-weight:700;font-size:0.9rem"> ${pts}</span>
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+function renderFromAcadEntries(container, acadEntries) {
+  // Group by event, then by house
+  const eventData = {};
+  acadEntries.forEach(e => {
+    const event = e.event || 'General';
+    if(!eventData[event]) eventData[event] = {};
+    if(!eventData[event][e.house]) eventData[event][e.house] = { points: 0, count: 0, posSum: 0 };
+    eventData[event][e.house].points += e.points || 0;
+    eventData[event][e.house].count++;
+    if(e.position) eventData[event][e.house].posSum += e.position;
+  });
+
+  const events = Object.keys(eventData);
+  const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
+  const acadPoints = CATS.Academics.points;
+
+  let html = `<div class="academic-summary">
+    <div class="academic-summary-title">📊 Academic Performance — Event Wise</div>
+    <table class="academic-summary-table">
+      <thead><tr>
+        <th>Event</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+  events.forEach(event => {
+    const houseData = eventData[event];
+    const houseRanks = HOUSES.map(h => ({
+      house: h, pts: houseData[h] ? houseData[h].points : 0
+    }));
+    houseRanks.sort((a, b) => b.pts - a.pts);
+
+    const rankMap = {};
+    houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
+
+    html += `<tr><td style="font-size:0.85rem;color:var(--muted);font-weight:600">${event}</td>`;
+    HOUSES.forEach(h => {
+      const d = houseData[h];
+      if(!d || d.count === 0) {
+        html += `<td class="house-cell" style="color:var(--muted)">—</td>`;
+        return;
+      }
+      const rank = rankMap[h];
+      const label = rankLabels[rank] || `${rank+1}th`;
+      const pts = acadPoints[rank] || 0;
+      const avgPos = d.count > 0 ? (d.posSum / d.count).toFixed(1) : '-';
+
+      html += `<td class="house-cell" style="color:${HCOLOR[h]}">
+        <span style="font-size:0.7rem;color:var(--muted)">${label}</span>
+        <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
       </td>`;
     });
     html += `</tr>`;

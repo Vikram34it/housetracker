@@ -1944,7 +1944,7 @@ function toggleTheme() {
 }
 
 function applyTheme() {
-  const saved = localStorage.getItem('vivaTheme') || 'light';
+  const saved = localStorage.getItem('vivaTheme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
   const btn = document.getElementById('themeToggle');
   if(btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';

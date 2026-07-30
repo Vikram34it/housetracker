@@ -669,6 +669,68 @@
     font-size: 1.1rem;
   }
 
+  .academic-summary {
+    margin-top: 32px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .academic-summary-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .academic-summary-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  .academic-summary-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    background: var(--card2);
+    font-weight: 700;
+  }
+
+  .academic-summary-table td {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .academic-summary-table tr:hover td {
+    background: rgba(56,189,248,0.03);
+  }
+
+  .academic-summary-table .cls-cell {
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .academic-summary-table .house-cell {
+    white-space: nowrap;
+  }
+
+  .academic-summary-table .no-data {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
   .rank-badge {
     display: inline-flex;
     align-items: center;
@@ -1368,6 +1430,7 @@
       <div class="section-title">House Details</div>
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
+    <div id="academicSummaryContainer"></div>
   </div>
 
   <!-- COMPARISON VIEW -->
@@ -2163,6 +2226,74 @@ function renderHouseDetails() {
         ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
   }).join('');
+  renderAcademicSummary();
+}
+
+function renderAcademicSummary() {
+  const container = document.getElementById('academicSummaryContainer');
+  if(!studentData || studentData.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Group students by class and house
+  const classHouseData = {};
+  studentData.forEach(s => {
+    const cls = s.cls || 'Unassigned';
+    if(!classHouseData[cls]) classHouseData[cls] = {};
+    if(!classHouseData[cls][s.house]) classHouseData[cls][s.house] = { total: 0, count: 0 };
+    classHouseData[cls][s.house].total += s.total || 0;
+    classHouseData[cls][s.house].count++;
+  });
+
+  const classes = Object.keys(classHouseData).sort((a, b) => {
+    const na = parseInt(a), nb = parseInt(b);
+    if(!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
+  const acadPoints = CATS.Academics.points;
+
+  let html = `<div class="academic-summary">
+    <div class="academic-summary-title">📊 Academic Performance — Class Wise</div>
+    <table class="academic-summary-table">
+      <thead><tr>
+        <th>Class</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+  classes.forEach(cls => {
+    const houseAvgs = HOUSES.map(h => {
+      const d = classHouseData[cls][h];
+      return { house: h, avg: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
+    });
+    houseAvgs.sort((a, b) => b.avg - a.avg);
+
+    const rankMap = {};
+    houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
+
+    html += `<tr><td class="cls-cell">${cls}</td>`;
+    HOUSES.forEach(h => {
+      const d = classHouseData[cls][h];
+      if(!d || d.count === 0) {
+        html += `<td class="house-cell" style="color:var(--muted)">—</td>`;
+        return;
+      }
+      const rank = rankMap[h];
+      const label = rankLabels[rank] || `${rank+1}th`;
+      const pts = acadPoints[rank] || 0;
+      html += `<td class="house-cell" style="color:${HCOLOR[h]}">
+        <span style="font-weight:700;font-size:1rem">${houseAvgs[rank].avg}</span>
+        <span style="font-size:0.7rem;color:var(--muted)"> ${label}</span>
+        <span style="font-weight:700;font-size:0.9rem"> ${pts}</span>
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
 }
 
 function renderComparison() {

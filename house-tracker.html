@@ -6,7 +6,7 @@
 <title>Viva House Championship Tracker</title>
 <script src="xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@500;600;700;800;900&display=swap');
 
   :root {
     --compassion: #22C55E;
@@ -36,13 +36,47 @@
     --glass: rgba(10,16,28,0.7);
     --border: rgba(148,163,184,0.08);
     --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --heading-font: 'Inter', system-ui, sans-serif;
+    --body-font: 'Inter', system-ui, sans-serif;
+  }
+
+  [data-theme="vibrant"] {
+    --compassion: #059669;
+    --compassion-bg: rgba(5,150,105,0.08);
+    --courage: #e11d48;
+    --courage-bg: rgba(225,29,72,0.08);
+    --honesty: #2563eb;
+    --honesty-bg: rgba(37,99,235,0.08);
+    --loyalty: #d97706;
+    --loyalty-bg: rgba(217,119,6,0.08);
+    --truth: #7c3aed;
+    --truth-bg: rgba(124,58,237,0.08);
+    --bg: #faf6ff;
+    --bg2: #f3edff;
+    --card: #ffffff;
+    --card2: #faf7ff;
+    --card3: #ede6ff;
+    --text: #1e1145;
+    --muted: #7c6ba6;
+    --accent: #7c3aed;
+    --accent2: #ec4899;
+    --gold: #d97706;
+    --silver: #94a3b8;
+    --bronze: #b45309;
+    --success: #10b981;
+    --danger: #ef4444;
+    --glass: rgba(255,255,255,0.75);
+    --border: rgba(124,58,237,0.08);
+    --shadow: 0 8px 32px rgba(124,58,237,0.1);
+    --heading-font: 'Poppins', system-ui, sans-serif;
+    --body-font: 'Inter', system-ui, sans-serif;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
   html { scroll-behavior: smooth; }
 
   body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--body-font);
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -313,7 +347,7 @@
     color: var(--bg);
   }
 
-  .logo h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+  .logo h1 { font-family: var(--heading-font); font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
   .logo h1 span { color: var(--accent); }
 
   .header-actions { display: flex; gap: 8px; align-items: center; }
@@ -387,6 +421,7 @@
   }
 
   .section-title {
+    font-family: var(--heading-font);
     font-size: 1rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -405,6 +440,96 @@
     background: linear-gradient(to bottom, var(--accent), var(--accent2));
     flex-shrink: 0;
   }
+
+  [data-theme="vibrant"] .section-title::before {
+    background: linear-gradient(to bottom, #7c3aed, #ec4899);
+  }
+
+  [data-theme="vibrant"] body::before {
+    background: radial-gradient(ellipse at 20% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 40%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(251,146,60,0.05) 0%, transparent 50%);
+  }
+
+  [data-theme="vibrant"] body::after {
+    background-image:
+      linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  [data-theme="vibrant"] .accent-glow {
+    background: radial-gradient(ellipse, rgba(124,58,237,0.1) 0%, transparent 70%);
+  }
+
+  [data-theme="vibrant"] .card::before {
+    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.15), rgba(236,72,153,0.15), transparent);
+  }
+
+  [data-theme="vibrant"] .header {
+    background: rgba(255,255,255,0.85);
+  }
+
+  [data-theme="vibrant"] .btn-primary:hover {
+    background: #6d28d9;
+    box-shadow: 0 0 20px rgba(124,58,237,0.3);
+  }
+
+  [data-theme="vibrant"] .btn-danger { background: rgba(239,68,68,0.1); color: #dc2626; border-color: rgba(239,68,68,0.15); }
+  [data-theme="vibrant"] .btn-danger:hover { background: rgba(239,68,68,0.2); }
+  [data-theme="vibrant"] .btn-success { background: rgba(16,185,129,0.1); color: #059669; border-color: rgba(16,185,129,0.15); }
+  [data-theme="vibrant"] .btn-success:hover { background: rgba(16,185,129,0.2); }
+
+  [data-theme="vibrant"] .nav-tab.active { background: rgba(124,58,237,0.1); }
+
+  [data-theme="vibrant"] .role-admin { background: rgba(124,58,237,0.12); color: #7c3aed; }
+  [data-theme="vibrant"] .role-user { background: rgba(37,99,235,0.12); color: #2563eb; }
+  [data-theme="vibrant"] .role-viewer { background: rgba(148,163,184,0.2); color: #64748b; }
+
+  [data-theme="vibrant"] .login-card { background: rgba(255,255,255,0.95); }
+  [data-theme="vibrant"] .login-input { background: #f8f4ff; border-color: rgba(124,58,237,0.12); color: #1e1145; }
+  [data-theme="vibrant"] .login-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+  [data-theme="vibrant"] .login-btn { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+  [data-theme="vibrant"] .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(124,58,237,0.3); }
+  [data-theme="vibrant"] .login-logo { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+  [data-theme="vibrant"] .login-title { color: #1e1145; }
+  [data-theme="vibrant"] .login-subtitle { color: #7c6ba6; }
+
+  [data-theme="vibrant"] .podium-spot { background: #ffffff; border-color: rgba(124,58,237,0.1); }
+  [data-theme="vibrant"] .podium-1 { border-color: #d97706; box-shadow: 0 0 30px rgba(217,119,6,0.15); }
+  [data-theme="vibrant"] .podium-2 { border-color: #94a3b8; }
+  [data-theme="vibrant"] .podium-3 { border-color: #b45309; }
+
+  [data-theme="vibrant"] .modal-content { background: #ffffff; }
+  [data-theme="vibrant"] .modal-header { border-bottom-color: rgba(124,58,237,0.08); }
+  [data-theme="vibrant"] .modal-footer { border-top-color: rgba(124,58,237,0.08); }
+
+  [data-theme="vibrant"] .form-select:focus, [data-theme="vibrant"] .form-input:focus, [data-theme="vibrant"] .form-textarea:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+  }
+
+  [data-theme="vibrant"] table th { background: #f3edff; color: #5b3e9e; }
+  [data-theme="vibrant"] table td { border-bottom-color: rgba(124,58,237,0.06); }
+  [data-theme="vibrant"] table tr:hover td { background: rgba(124,58,237,0.03); }
+
+  [data-theme="vibrant"] .history-table th { background: #f3edff; color: #5b3e9e; }
+  [data-theme="vibrant"] .history-table td { border-bottom-color: rgba(124,58,237,0.06); }
+  [data-theme="vibrant"] .history-table tr:hover td { background: rgba(124,58,237,0.03); }
+
+  [data-theme="vibrant"] .award-card { background: #ffffff; }
+  [data-theme="vibrant"] .award-icon { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+
+  [data-theme="vibrant"] .badge { background: rgba(124,58,237,0.1); color: #7c3aed; }
+
+  [data-theme="vibrant"] .chart-card { background: #ffffff; }
+  [data-theme="vibrant"] .comparison-card { background: #ffffff; }
+  [data-theme="vibrant"] .house-detail-card { background: #ffffff; }
+
+  [data-theme="vibrant"] .toast { background: #ffffff; color: #1e1145; box-shadow: 0 8px 32px rgba(124,58,237,0.15); }
+  [data-theme="vibrant"] .toast.success { border-left-color: #10b981; }
+  [data-theme="vibrant"] .toast.error { border-left-color: #ef4444; }
+  [data-theme="vibrant"] .toast.info { border-left-color: #7c3aed; }
 
   /* CARDS */
   .card {
@@ -1318,7 +1443,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-header">
-      <div class="login-logo">V</div>
+      <img src="VIVAA.png" alt="Viva Logo" style="height:42px;width:42px;border-radius:12px;object-fit:cover">
       <h1 class="login-title">House Tracker</h1>
       <p class="login-subtitle">Sign in to access the tracker</p>
     </div>
@@ -1356,6 +1481,7 @@
     </label>
     <button class="btn btn-ghost admin-only" onclick="exportCSV()" title="Export CSV">Export</button>
     <button class="btn btn-danger btn-icon admin-only" onclick="confirmReset()" title="Reset All">Reset</button>
+    <button class="btn btn-ghost" onclick="toggleTheme()" id="themeToggle" title="Switch Theme">🎨</button>
     <button class="btn btn-ghost" onclick="handleLogout()" title="Logout">Logout</button>
   </div>
 </div>
@@ -1950,10 +2076,27 @@ function isAdmin() {
   return currentUser && currentUser.role === 'admin';
 }
 
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') !== 'vibrant';
+  const newTheme = isDark ? 'vibrant' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('vivaTheme', newTheme);
+  document.getElementById('themeToggle').textContent = isDark ? '🌙' : '🎨';
+}
+
+function applyTheme() {
+  const saved = localStorage.getItem('vivaTheme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('themeToggle');
+  if(btn) btn.textContent = saved === 'dark' ? '🎨' : '🌙';
+}
+
 // ===== INITIALIZATION =====
 async function initializeApp() {
   try {
     showSaving();
+    applyTheme();
     
     // Load data from Google Sheets
     const [entriesData, studentsData, configData] = await Promise.all([

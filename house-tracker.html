@@ -3312,7 +3312,7 @@ function autoDetectColumns() {
 function renderPreview() {
   const headers = rawExcelData[0];
 
-  // Build import actions with exam name and category
+  // Build import actions with exam name, category and grade
   document.getElementById('importActions').innerHTML = `
     <div>
       <label class="form-label">Exam / Event Name</label>
@@ -3321,6 +3321,13 @@ function renderPreview() {
     <div>
       <label class="form-label">Category</label>
       <select class="form-select" id="importCategory"></select>
+    </div>
+    <div>
+      <label class="form-label">Grade / Class</label>
+      <select class="form-select" id="importGrade">
+        <option value="">Auto (from class column)</option>
+        ${CATS.Academics.subs.filter(s => s.startsWith('Grade')).map(g => `<option value="${g}">${g}</option>`).join('')}
+      </select>
     </div>`;
   document.getElementById('importActions').style.display = 'grid';
   document.getElementById('importBtn').style.display = 'block';
@@ -3517,12 +3524,13 @@ async function importData() {
     newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
   });
 
-  // Add per-class entries with Grade subCategories
+  // Add entries with Grade subCategories
+  const selectedGrade = document.getElementById('importGrade').value;
   const classHouseData = {};
   rows.forEach(row => {
     const house = String(row[columnMapping.house] || '').trim();
     const name = String(row[columnMapping.name] || '').trim();
-    const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
+    const cls = selectedGrade || (columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All');
     if(!HOUSES.includes(house) || !name) return;
     let total = 0;
     if(columnMapping.total >= 0) {
@@ -3539,7 +3547,6 @@ async function importData() {
   });
 
   const acadPts = CATS['Academics'].points;
-  const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
   Object.keys(classHouseData).forEach(cls => {
     const houses = HOUSES.map(h => ({
       house: h,

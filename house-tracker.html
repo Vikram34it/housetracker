@@ -417,23 +417,28 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   .section-title {
     font-family: var(--heading-font);
-    font-size: 40px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
     display: flex;
     align-items: center;
-    gap: 12px;
-    text-transform: none;
+    gap: 10px;
   }
 
   .section-title::before {
-    display: none;
+    content: '';
+    width: 4px;
+    height: 20px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    flex-shrink: 0;
   }
 
   .section-subtitle {
@@ -441,187 +446,6 @@
     font-weight: 500;
     color: var(--muted);
     letter-spacing: 0.3px;
-  }
-
-  /* DASHBOARD HEADER */
-  .dash-header { margin-bottom: 32px; }
-
-  .dash-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .dash-stats-bar {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .dash-stat {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 16px 28px;
-    text-align: center;
-    flex: 1;
-    min-width: 140px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-  }
-
-  .dash-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-
-  .dash-stat-value {
-    display: block;
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1.2;
-  }
-
-  .dash-stat-label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 4px;
-  }
-
-  /* HOUSE CARDS GRID */
-  .house-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-    margin-bottom: 40px;
-  }
-
-  .house-card {
-    background: var(--card);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-  }
-
-  .house-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
-
-  .hc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-
-  .hc-emoji { font-size: 32px; line-height: 1; }
-
-  .hc-rank-badge {
-    font-size: 13px;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 20px;
-    letter-spacing: 0.3px;
-  }
-
-  .badge-champion { background: rgba(255,215,0,0.15); color: #d97706; }
-  .badge-runnerup { background: rgba(148,163,184,0.15); color: #64748b; }
-  .badge-third { background: rgba(245,158,11,0.15); color: #b45309; }
-  .badge-fourth { background: rgba(124,58,237,0.1); color: #7c3aed; }
-  .badge-fifth { background: rgba(124,58,237,0.08); color: #6d28d9; }
-
-  .hc-name {
-    font-family: var(--heading-font);
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  .hc-score-row { display: flex; justify-content: center; margin-bottom: 16px; }
-
-  .hc-circle svg { display: block; }
-
-  /* PROGRESS BARS */
-  .hc-progress-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-
-  .hc-progress-row {
-    display: grid;
-    grid-template-columns: 1fr 32px;
-    gap: 4px;
-    align-items: center;
-  }
-
-  .hc-progress-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .hc-progress-value {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
-    text-align: right;
-  }
-
-  .hc-progress-track {
-    grid-column: 1 / -1;
-    height: 8px;
-    background: var(--card3);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .hc-progress-fill {
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.8s ease;
-  }
-
-  .hc-btn {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    background: var(--card2);
-    color: var(--text);
-    font-family: var(--body-font);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.25s ease;
-  }
-
-  .hc-btn:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-1px); }
-
-  /* CHAMPION CARD */
-  .champion-card {
-    border-color: rgba(255,215,0,0.4);
-    box-shadow: 0 0 40px rgba(255,215,0,0.15), 0 12px 40px rgba(0,0,0,0.06);
-  }
-
-  .champion-card:hover { border-color: rgba(255,215,0,0.6); box-shadow: 0 0 60px rgba(255,215,0,0.25), 0 20px 60px rgba(0,0,0,0.1); }
-
-  .champion-glow {
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 50% 50%, rgba(255,215,0,0.06) 0%, transparent 60%);
-    pointer-events: none;
-    animation: champPulse 3s ease-in-out infinite;
-  }
-
-  @keyframes champPulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.05); }
   }
 
   [data-theme="vibrant"] body {
@@ -728,18 +552,26 @@
   /* CARDS */
   .card {
     background: var(--card);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
     padding: 24px;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
   }
 
   .card::before {
     content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.2), transparent);
+  }
+
+  .card:hover { border-color: rgba(56,189,248,0.2); }
     position: absolute;
     top: 0;
     left: 0;
@@ -1049,17 +881,13 @@
   }
 
   .academic-summary-title {
-    font-family: var(--heading-font);
-    font-size: 22px;
+    font-size: 1rem;
     font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--text);
-    letter-spacing: -0.3px;
+    margin-bottom: 16px;
   }
 
   .table-wrapper {
     overflow-x: auto;
-    border-radius: 16px;
   }
 
   .academic-summary-table {
@@ -1067,51 +895,36 @@
     border-collapse: separate;
     border-spacing: 0;
     overflow: hidden;
-    border-radius: 16px;
+    border-radius: 12px;
     border: 1px solid var(--border);
   }
 
-  .academic-summary-table thead { position: sticky; top: 0; z-index: 5; }
-
   .academic-summary-table th {
-    padding: 14px 16px;
+    padding: 10px 12px;
     text-align: left;
-    font-size: 12px;
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
     color: var(--muted);
     background: var(--card2);
     font-weight: 700;
-    border-bottom: 2px solid var(--border);
   }
-
-  .academic-summary-table th:first-child { border-radius: 14px 0 0 0; }
-  .academic-summary-table th:last-child { border-radius: 0 14px 0 0; }
 
   .academic-summary-table td {
-    padding: 14px 16px;
-    font-size: 14px;
-    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
     vertical-align: middle;
-    transition: background 0.2s ease;
   }
 
-  .academic-summary-table tbody tr:nth-child(even) td {
-    background: rgba(0,0,0,0.02);
-  }
-
-  .academic-summary-table tbody tr:last-child td:first-child { border-radius: 0 0 0 14px; }
-  .academic-summary-table tbody tr:last-child td:last-child { border-radius: 0 0 14px 0; }
-
-  .academic-summary-table tbody tr:hover td {
-    background: rgba(124,58,237,0.04);
+  .academic-summary-table tr:hover td {
+    background: rgba(56,189,248,0.03);
   }
 
   .academic-summary-table .cls-cell {
     font-weight: 700;
-    font-size: 15px;
+    font-size: 0.9rem;
     white-space: nowrap;
-    color: var(--text);
   }
 
   .academic-summary-table .house-cell {
@@ -1127,9 +940,9 @@
 
   .academic-summary-table .no-data {
     text-align: center;
-    padding: 40px;
+    padding: 32px;
     color: var(--muted);
-    font-size: 15px;
+    font-size: 0.9rem;
   }
 
   .rank-badge {
@@ -1582,8 +1395,6 @@
   @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
     .charts-grid { grid-template-columns: 1fr; }
-    .house-cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .section-title { font-size: 32px; }
   }
 
   @media (max-width: 768px) {
@@ -1623,13 +1434,9 @@
     .nav-tab { padding: 6px 14px; font-size: 0.75rem; white-space: nowrap; }
     .container { padding: 12px; }
     .section-title { font-size: 26px; }
-    .dash-title-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .dash-stats-bar { flex-direction: column; gap: 8px; }
-    .dash-stat { padding: 12px 20px; min-width: auto; }
-    .dash-stat-value { font-size: 22px; }
-    .house-cards-grid { grid-template-columns: 1fr; gap: 16px; }
-    .hc-name { font-size: 24px; }
-    .hc-circle svg { width: 110px; height: 110px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .podium { flex-direction: column; align-items: center; }
+    .podium-spot { order: unset !important; width: 100%; max-width: 280px; min-height: auto; }
     .form-row { grid-template-columns: 1fr; }
     .donut-container { flex-direction: column; }
     .monthly-podium { flex-direction: column; align-items: center; }
@@ -1654,11 +1461,6 @@
 
   @media (max-width: 480px) {
     .section-title { font-size: 22px; }
-    .house-cards-grid { gap: 12px; }
-    .house-card { padding: 16px; }
-    .hc-name { font-size: 20px; }
-    .hc-circle svg { width: 100px; height: 100px; }
-    .hc-progress-label { font-size: 11px; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .house-detail-grid { grid-template-columns: 1fr; }
     .awards-grid { grid-template-columns: 1fr; }
@@ -1739,7 +1541,16 @@
 <div class="container">
 
   <!-- DASHBOARD VIEW -->
-  <div class="view active" id="dashboardView"></div>
+  <div class="view active" id="dashboardView">
+    <div class="podium-section">
+      <div class="section-header">
+        <div class="section-title">Championship Standings (Cumulative)</div>
+        <div style="font-size:0.8rem;color:var(--muted)" id="seasonLabel">Season 2025-26</div>
+      </div>
+      <div class="podium" id="podium"></div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
 
   <!-- MONTHLY VIEW -->
   <div class="view" id="monthlyView">
@@ -2568,11 +2379,9 @@ function renderNavTabs() {
 
 function renderDashboard() {
   const sorted = getSorted();
-  const maxPts = Math.max(...sorted.map(s=>s.total), 1);
-  const totalPoints = entries.reduce((s,e) => s + e.points, 0);
-  const topHouse = sorted[0]?.house || '-';
-  const totalStudents = studentData ? studentData.length : 0;
+  const maxPts = Math.max(...sorted.map(s=>s.total),1);
 
+  // Assign ranks (ties get same rank)
   let ranks = [];
   let prevTotal = null, prevRank = 0;
   sorted.forEach((s, i) => {
@@ -2580,77 +2389,47 @@ function renderDashboard() {
     ranks.push(prevRank);
   });
 
-  const rankBadges = {
-    1: { label: 'Champion', icon: '🏆', cls: 'badge-champion' },
-    2: { label: 'Runner-Up', icon: '🥈', cls: 'badge-runnerup' },
-    3: { label: 'Third Place', icon: '🥉', cls: 'badge-third' },
-    4: { label: 'Fourth Position', icon: '⭐', cls: 'badge-fourth' },
-    5: { label: 'Fifth Position', icon: '⭐', cls: 'badge-fifth' }
-  };
+  // Podium: top 3 ranks, individual boxes
+  const podiumRanks = [1, 2, 3];
+  const podiumOrder = [];
+  podiumRanks.forEach(r => {
+    sorted.forEach((s, i) => {
+      if(ranks[i] === r) podiumOrder.push({...s, rank: r});
+    });
+  });
 
-  const houseEmojis = { Courage:'🦁', Truth:'⚖️', Compassion:'💚', Honesty:'🔵', Loyalty:'⭐' };
-  const viewBtns = ['View Report', 'Explore Insights', 'View Performance', 'See Statistics', 'View Details'];
+  const spotClasses = ['spot-1', 'spot-2', 'spot-3'];
+  const medals = {1: '🥇', 2: '🥈', 3: '🥉'};
 
-  const catLabels = CAT_LABELS;
-
-  // Summary stats row
-  const statsHtml = `
-    <div class="dash-stats-bar">
-      <div class="dash-stat"><span class="dash-stat-value">${totalStudents}</span><span class="dash-stat-label">Students</span></div>
-      <div class="dash-stat"><span class="dash-stat-value" style="color:${HCOLOR[topHouse]}">${topHouse}</span><span class="dash-stat-label">Top House</span></div>
-      <div class="dash-stat"><span class="dash-stat-value">${totalPoints}</span><span class="dash-stat-label">Total Points</span></div>
-    </div>`;
-
-  // House cards
-  const cardsHtml = sorted.map((h, i) => {
-    const rank = ranks[i];
-    const badge = rankBadges[rank];
-    const pct = Math.min((h.total / maxPts) * 100, 100);
-    const r = 54, circ = 2 * Math.PI * r;
-    const offset = circ - (pct / 100) * circ;
-
-    const cats = Object.keys(CATS);
-    const catMax = Math.max(...cats.map(c => getCatTotal(h.house, c)), 1);
-    const progressBars = cats.map(c => `
-      <div class="hc-progress-row">
-        <span class="hc-progress-label">${catLabels[c] || c}</span>
-        <span class="hc-progress-value">${getCatTotal(h.house, c)}</span>
-        <div class="hc-progress-track"><div class="hc-progress-fill" style="width:${(getCatTotal(h.house,c)/catMax)*100}%;background:${CATS[c].color}"></div></div>
-      </div>`).join('');
-
+  document.getElementById('podium').innerHTML = podiumOrder.map((item) => {
+    const rankIdx = item.rank - 1;
+    const catBreakdown = Object.keys(CATS).map(c =>
+      `<div class="podium-cat"><span>${c}</span><span>${getCatTotal(item.house,c)}</span></div>`
+    ).join('');
     return `
-      <div class="house-card ${rank === 1 ? 'champion-card' : ''}">
-        ${rank === 1 ? '<div class="champion-glow"></div>' : ''}
-        <div class="hc-top">
-          <span class="hc-emoji">${houseEmojis[h.house] || '🏠'}</span>
-          <span class="hc-rank-badge ${badge.cls}">${badge.icon} ${badge.label}</span>
-        </div>
-        <div class="hc-name" style="color:${HCOLOR[h.house]}">${h.house} House</div>
-        <div class="hc-score-row">
-          <div class="hc-circle">
-            <svg width="130" height="130" viewBox="0 0 130 130">
-              <circle cx="65" cy="65" r="${r}" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="8"/>
-              <circle cx="65" cy="65" r="${r}" fill="none" stroke="${HCOLOR[h.house]}" stroke-width="8"
-                stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="rotate(-90 65 65)" stroke-linecap="round" style="transition:stroke-dashoffset 1.2s ease"/>
-              <text x="65" y="61" text-anchor="middle" fill="${HCOLOR[h.house]}" font-weight="800" font-size="34" font-family="var(--heading-font)">${h.total}</text>
-              <text x="65" y="80" text-anchor="middle" fill="var(--muted)" font-weight="500" font-size="12" font-family="var(--body-font)">pts</text>
-            </svg>
-          </div>
-        </div>
-        <div class="hc-progress-section">${progressBars}</div>
-        <button class="hc-btn" onclick="openHouseDetail('${h.house}')">${viewBtns[i % viewBtns.length]}</button>
+      <div class="podium-spot ${spotClasses[rankIdx]}">
+        <div class="medal">${medals[item.rank]}</div>
+        <div class="podium-house-name" style="color:${HCOLOR[item.house]}">${item.house}</div>
+        <div class="podium-points">${item.total}</div>
+        <div class="podium-points-label">Total Points</div>
+        <div class="podium-bar" style="width:${(item.total/maxPts)*100}%;background:${HCOLOR[item.house]}"></div>
+        <div class="podium-categories">${catBreakdown}</div>
       </div>`;
   }).join('');
 
-  document.getElementById('dashboardView').innerHTML = `
-    <div class="dash-header">
-      <div class="dash-title-row">
-        <div class="section-title">🏆 House Performance Dashboard</div>
-        <div class="section-subtitle" id="seasonLabel">Term 2 • Academic Year 2026–27</div>
-      </div>
-      ${statsHtml}
-    </div>
-    <div class="house-cards-grid">${cardsHtml}</div>`;
+  // Stats cards
+  document.getElementById('statsGrid').innerHTML = sorted.map((h,i) => {
+    const best = getMaxCat(h.house);
+    return `
+      <div class="stat-box">
+        <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
+        <div class="stat-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" style="width:${(h.total/maxPts)*100}%;background:${HCOLOR[h.house]}"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+      </div>`;
+  }).join('');
 }
 
 function renderHouseDetails() {

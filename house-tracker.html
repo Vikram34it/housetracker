@@ -2231,20 +2231,38 @@ function renderHouseDetails() {
 
 function renderAcademicSummary() {
   const container = document.getElementById('academicSummaryContainer');
-  if(!studentData || studentData.length === 0) {
+
+  // Use entries with category 'Academics' and Grade-based subCategories
+  const acadEntries = entries.filter(e => e.category === 'Academics');
+  const gradeSubs = CATS.Academics.subs.filter(s => s.startsWith('Grade'));
+  const classEntries = acadEntries.filter(e => gradeSubs.includes(e.subCategory));
+
+  if(classEntries.length === 0) {
     container.innerHTML = '';
     return;
   }
 
-  // Group students by class and house
+  // Group by class (subCategory) and house
   const classHouseData = {};
-  studentData.forEach(s => {
-    const cls = s.cls || 'Unassigned';
+  classEntries.forEach(e => {
+    const cls = e.subCategory.replace('Grade ', '');
     if(!classHouseData[cls]) classHouseData[cls] = {};
-    if(!classHouseData[cls][s.house]) classHouseData[cls][s.house] = { total: 0, count: 0 };
-    classHouseData[cls][s.house].total += s.total || 0;
-    classHouseData[cls][s.house].count++;
+    if(!classHouseData[cls][e.house]) classHouseData[cls][e.house] = { points: 0, count: 0 };
+    classHouseData[cls][e.house].points += e.points || 0;
+    classHouseData[cls][e.house].count++;
   });
+
+  // Supplement with studentData avg scores if available
+  const studentAvgs = {};
+  if(studentData && studentData.length > 0) {
+    studentData.forEach(s => {
+      const cls = s.cls || 'Unassigned';
+      if(!studentAvgs[cls]) studentAvgs[cls] = {};
+      if(!studentAvgs[cls][s.house]) studentAvgs[cls][s.house] = { total: 0, count: 0 };
+      studentAvgs[cls][s.house].total += s.total || 0;
+      studentAvgs[cls][s.house].count++;
+    });
+  }
 
   const classes = Object.keys(classHouseData).sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
@@ -2264,14 +2282,15 @@ function renderAcademicSummary() {
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
-    const houseAvgs = HOUSES.map(h => {
+    // Rank houses by total points within this class
+    const houseRanks = HOUSES.map(h => {
       const d = classHouseData[cls][h];
-      return { house: h, avg: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
+      return { house: h, pts: d ? d.points : 0 };
     });
-    houseAvgs.sort((a, b) => b.avg - a.avg);
+    houseRanks.sort((a, b) => b.pts - a.pts);
 
     const rankMap = {};
-    houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
+    houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
     html += `<tr><td class="cls-cell">${cls}</td>`;
     HOUSES.forEach(h => {
@@ -2283,10 +2302,18 @@ function renderAcademicSummary() {
       const rank = rankMap[h];
       const label = rankLabels[rank] || `${rank+1}th`;
       const pts = acadPoints[rank] || 0;
+
+      // Get avg score from studentData if available
+      let avgHtml = '';
+      if(studentAvgs[cls] && studentAvgs[cls][h]) {
+        const sa = studentAvgs[cls][h];
+        const avg = Math.round((sa.total / sa.count) * 10) / 10;
+        avgHtml = `<span style="font-weight:700;font-size:0.9rem">${avg}</span> `;
+      }
+
       html += `<td class="house-cell" style="color:${HCOLOR[h]}">
-        <span style="font-weight:700;font-size:1rem">${houseAvgs[rank].avg}</span>
-        <span style="font-size:0.7rem;color:var(--muted)"> ${label}</span>
-        <span style="font-weight:700;font-size:0.9rem"> ${pts}</span>
+        ${avgHtml}<span style="font-size:0.7rem;color:var(--muted)">${label}</span>
+        <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
       </td>`;
     });
     html += `</tr>`;

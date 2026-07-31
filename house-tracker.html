@@ -1613,6 +1613,7 @@
     <div class="section-header">
       <div class="section-title">Activity Log</div>
     </div>
+    <div id="importHistory" style="margin-bottom:16px"></div>
     <div class="history-controls">
       <div class="filter-chips" id="filterChips"></div>
       <input type="text" class="search-box" placeholder="Search events..." id="searchBox" oninput="renderHistory()">
@@ -2525,7 +2526,6 @@ function renderFromEntries(container, classEntries) {
           <div class="hc-event-name">${(classExams[cls] || ['General']).join(', ')}</div>
           <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${houseAvgs[rank].avg}</span>
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
-          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}</span>
         </td>`;
       });
       html += `</tr>`;
@@ -2567,7 +2567,6 @@ function renderFromEntries(container, classEntries) {
         html += `<td class="house-cell" style="color:var(--text)">
           <div class="hc-event-name">${event}</div>
           ${avgHtml}<span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
-          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
         </td>`;
       });
       html += `</tr>`;
@@ -2630,7 +2629,6 @@ function renderFromStudentData(container) {
       html += `<td class="house-cell" style="color:var(--text)">
         <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${houseAvgs[rank].avg}</span>
         <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
-        <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}</span>
       </td>`;
     });
     html += `</tr>`;
@@ -2698,7 +2696,6 @@ function renderFromAcadEntries(container, acadEntries) {
         <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-bottom:2px">${event}</div>
         ${avgStr ? `<span style="font-weight:800;font-size:1.15rem;color:var(--text)">${avgStr}</span> ` : ''}
         <span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
-        <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
       </td>`;
     });
     html += `</tr>`;
@@ -2764,7 +2761,6 @@ function renderFromAcadWithStudentData(container, acadEntries) {
           <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-bottom:2px">${exam}</div>
           <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${avg.toFixed(1)}</span>
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
-          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
         </td>`;
       });
       html += `</tr>`;
@@ -2939,7 +2935,37 @@ function renderAwards() {
   `).join('');
 }
 
+function renderImportHistory() {
+  const el = document.getElementById('importHistory');
+  if(!el) return;
+  if(!studentData || studentData.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const exams = {};
+  studentData.forEach(s => {
+    const exam = s.exam || 'Excel Import';
+    if(!exams[exam]) exams[exam] = { count: 0, date: s.date || '' };
+    exams[exam].count++;
+    if(s.date && (!exams[exam].date || s.date < exams[exam].date)) exams[exam].date = s.date;
+  });
+  const sorted = Object.keys(exams).sort((a,b) => (exams[b].date||'').localeCompare(exams[a].date||''));
+
+  el.innerHTML = `
+    <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">📁 Imported Files</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${sorted.map(exam => `
+        <div style="padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;font-size:0.78rem">
+          <div style="font-weight:700">${exam}</div>
+          <div style="color:var(--muted)">${exams[exam].count} students${exams[exam].date ? ' · ' + new Date(exams[exam].date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : ''}</div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
 function renderHistory() {
+  renderImportHistory();
   const search = document.getElementById('searchBox')?.value?.toLowerCase() || '';
   let filtered = activeFilter === 'All' ? entries : entries.filter(e => e.category === activeFilter);
   if(search) filtered = filtered.filter(e =>

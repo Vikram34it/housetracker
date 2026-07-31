@@ -2895,7 +2895,6 @@ function renderAwards() {
 
   const awards = [
     { icon:'🏆', title:'Championship Leader', winner:sorted[0]?.house||'-', detail:`${sorted[0]?.total||0} total points` },
-    { icon:'📊', title:'Total Entries', winner:totalEntries, detail:`${totalPoints} total points awarded` },
     { icon:'🎯', title:'Most Active House', winner:mostActive.house, detail:`${mostActive.count} entries` },
     { icon:'⭐', title:'Highest Single Score', winner:bestEntry?.house||'-', detail:bestEntry?`${bestEntry.points} pts — ${bestEntry.event||bestEntry.category}`:'No entries yet' },
     ...catLeaders.map(cl => ({
@@ -2904,7 +2903,8 @@ function renderAwards() {
       winner: cl.house,
       detail: `${cl.val} points`,
       color: cl.color
-    }))
+    })),
+    { icon:'📊', title:'Total Entries', winner:totalEntries, detail:`${totalPoints} total points awarded` }
   ];
 
   document.getElementById('awardsGrid').innerHTML = awards.map(a => `

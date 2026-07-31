@@ -1732,10 +1732,6 @@
         <label class="form-label">Event / Description</label>
         <input type="text" class="form-input" id="bulkEvent" placeholder="e.g. Inter-House Quiz Competition">
       </div>
-      <div class="form-group">
-        <label class="form-label">Note (optional)</label>
-        <textarea class="form-textarea" id="bulkNote" placeholder="Any additional details..."></textarea>
-      </div>
       <div id="bulkInputs"></div>
     </div>
     <div class="modal-footer">
@@ -3043,11 +3039,12 @@ function updateBulkSub() {
 
   document.getElementById('bulkInputs').innerHTML = `
     <div style="margin-top:16px">
-      <label class="form-label">Points per House</label>
+      <label class="form-label">Points &amp; Notes per House</label>
       ${HOUSES.map(h => `
         <div class="form-group" style="display:flex;align-items:center;gap:10px">
           <span class="house-tag" style="background:${HBGCOLOR[h]};color:${HCOLOR[h]};min-width:100px;text-align:center">${h}</span>
           <input type="number" class="form-input" id="bulk_${h}" value="0" min="0" style="flex:1">
+          <input type="text" class="form-input" id="bulkNote_${h}" placeholder="Note (optional)" style="flex:2">
         </div>
       `).join('')}
     </div>`;
@@ -3101,17 +3098,17 @@ async function saveBulk() {
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
   const event = document.getElementById('bulkEvent').value;
-  const note = document.getElementById('bulkNote').value;
   let count = 0;
   const newEntries = [];
 
   HOUSES.forEach(h => {
     const pts = parseInt(document.getElementById('bulk_'+h).value) || 0;
     if(pts !== 0) {
+      const noteEl = document.getElementById('bulkNote_'+h);
       newEntries.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         house: h, category: cat, subCategory: sub,
-        position: 0, points: pts, event, note,
+        position: 0, points: pts, event, note: noteEl ? noteEl.value : '',
         date: new Date().toISOString()
       });
       count++;

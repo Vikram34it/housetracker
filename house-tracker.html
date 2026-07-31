@@ -1567,6 +1567,7 @@
         <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div id="fileInfo" style="display:none;margin-top:16px;padding:12px;background:var(--card2);border-radius:10px"></div>
+      <div id="fileList" style="display:none;margin-top:8px"></div>
 
       <div id="importActions" style="display:none;margin-top:16px;grid-template-columns:1fr 1fr;gap:12px;align-items:end"></div>
 
@@ -3323,7 +3324,14 @@ function handleFile(file) {
         return;
       }
 
+      const fileEntry = { fileName: file.name, headers: rawExcelData[0], rows: rawExcelData.slice(1) };
+      if(!window._pendingFiles) window._pendingFiles = [];
+      const existing = window._pendingFiles.findIndex(f => f.fileName === file.name);
+      if(existing >= 0) window._pendingFiles[existing] = fileEntry; else window._pendingFiles.push(fileEntry);
+
+      const totalRows = window._pendingFiles.reduce((n, f) => n + f.rows.length, 0);
       fileInfo.innerHTML = `<span style="color:var(--success)">📎</span> ${file.name} (${(file.size/1024).toFixed(1)} KB) — ${rawExcelData.length - 1} rows detected`;
+      renderFileList();
 
       autoDetectColumns();
 
@@ -3339,7 +3347,7 @@ function handleFile(file) {
       }
 
       renderPreview();
-      showToast(`Loaded ${rawExcelData.length - 1} rows from ${workbook.SheetNames[0]}`, 'success');
+      showToast(`Loaded ${rawExcelData.length - 1} rows from ${workbook.SheetNames[0]}` + (window._pendingFiles.length > 1 ? ` — ${totalRows} total across ${window._pendingFiles.length} files` : ''), 'success');
     } catch(err) {
       showToast('Failed to parse file: ' + err.message, 'error');
       fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Failed to parse: ${err.message}`;
@@ -3350,6 +3358,47 @@ function handleFile(file) {
     fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Read error`;
   };
   reader.readAsArrayBuffer(file);
+}
+
+function renderFileList() {
+  const listEl = document.getElementById('fileList');
+  if(!listEl) return;
+  if(!window._pendingFiles || window._pendingFiles.length === 0) {
+    listEl.style.display = 'none';
+    listEl.innerHTML = '';
+    return;
+  }
+  const totalRows = window._pendingFiles.reduce((n, f) => n + f.rows.length, 0);
+  listEl.style.display = 'block';
+  listEl.innerHTML = `
+    <div style="padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;font-size:0.78rem">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--accent)">Loaded files — ${window._pendingFiles.length} file(s), ${totalRows} total rows</div>
+      ${window._pendingFiles.map(f => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--border)">
+          <span>📁 ${f.fileName} <span style="color:var(--muted)">(${f.rows.length} rows)</span></span>
+          <button class="btn btn-ghost btn-sm" onclick="removeFile('${f.fileName.replace(/'/g, "\\'")}')" style="font-size:0.7rem">Remove</button>
+        </div>
+      `).join('')}
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:6px">All loaded files are combined and ranked together on import.</div>
+    </div>`;
+}
+
+function removeFile(fileName) {
+  if(!window._pendingFiles) return;
+  window._pendingFiles = window._pendingFiles.filter(f => f.fileName !== fileName);
+  if(window._pendingFiles.length > 0) {
+    const last = window._pendingFiles[window._pendingFiles.length - 1];
+    rawExcelData = [last.headers, ...last.rows];
+  } else {
+    rawExcelData = [];
+  }
+  renderFileList();
+  if(window._pendingFiles.length === 0) {
+    clearFile();
+  } else {
+    autoDetectColumns();
+    renderPreview();
+  }
 }
 
 function autoDetectColumns() {
@@ -3394,11 +3443,16 @@ function autoDetectColumns() {
 function renderPreview() {
   const headers = rawExcelData[0];
 
+  const prevExam = document.getElementById('importExamName')?.value || '';
+  const prevCat = document.getElementById('importCategory')?.value || '';
+  const prevGrade = document.getElementById('importGrade')?.value || '';
+  const prevLabel = document.getElementById('importCommonLabel')?.value || '';
+
   // Build import actions with exam name, category and grade
   document.getElementById('importActions').innerHTML = `
     <div>
       <label class="form-label">Exam / Event Name</label>
-      <input type="text" class="form-input" id="importExamName" placeholder="e.g. PT-1 Exam 2025">
+      <input type="text" class="form-input" id="importExamName" placeholder="e.g. PT-1 Exam 2025" value="${prevExam.replace(/"/g,'&quot;')}">
     </div>
     <div>
       <label class="form-label">Category</label>
@@ -3413,8 +3467,8 @@ function renderPreview() {
     </div>
     <div>
       <label class="form-label">Common Label (optional)</label>
-      <input type="text" class="form-input" id="importCommonLabel" placeholder="e.g. TERM-2 ALL CLASSES">
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">Combines all classes under one label and ranks the 5 houses together. Overrides Grade/Class.</div>
+      <input type="text" class="form-input" id="importCommonLabel" placeholder="e.g. TERM-2 ALL CLASSES" value="${prevLabel.replace(/"/g,'&quot;')}">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">Combines all uploaded files/classes under one label and ranks the 5 houses together. Overrides Grade/Class.</div>
     </div>`;
   document.getElementById('importActions').style.display = 'grid';
   document.getElementById('importBtn').style.display = 'block';
@@ -3423,6 +3477,9 @@ function renderPreview() {
   const catKeys = Object.keys(CATS);
   const catSelect = document.getElementById('importCategory');
   catSelect.innerHTML = catKeys.map(c => `<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
+  if(prevCat) catSelect.value = prevCat;
+  const gradeSelect = document.getElementById('importGrade');
+  if(prevGrade) gradeSelect.value = prevGrade;
 
   // Render student data table at bottom
   let stuHtml = `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
@@ -3579,45 +3636,53 @@ async function importData() {
 
   const examName = document.getElementById('importExamName').value || 'Excel Import';
   const category = document.getElementById('importCategory').value;
-  const headers = rawExcelData[0];
-  const rows = rawExcelData.slice(1);
+  const files = (window._pendingFiles && window._pendingFiles.length > 0)
+    ? window._pendingFiles
+    : [{ fileName: 'upload.xlsx', headers: rawExcelData[0], rows: rawExcelData.slice(1) }];
   let count = 0;
   let idCounter = Date.now();
 
   const newStudents = [];
   const newEntries = [];
 
-  // Save student data persistently
-  rows.forEach(row => {
-    const house = String(row[columnMapping.house] || '').trim();
-    const name = String(row[columnMapping.name] || '').trim();
-    const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
-    const sec = columnMapping.section >= 0 ? String(row[columnMapping.section] || '').trim() : '';
+  // Save student data persistently (across all loaded files)
+  files.forEach(file => {
+    const fHeaders = file.headers;
+    file.rows.forEach(row => {
+      const house = String(row[columnMapping.house] || '').trim();
+      const name = String(row[columnMapping.name] || '').trim();
+      const cls = columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All';
+      const sec = columnMapping.section >= 0 ? String(row[columnMapping.section] || '').trim() : '';
 
-    if(!HOUSES.includes(house) || !name) return;
+      if(!HOUSES.includes(house) || !name) return;
 
-    const subjects = {};
-    let total = 0;
-    if(columnMapping.total >= 0) {
-      total = parseFloat(row[columnMapping.total]) || 0;
-    }
-    columnMapping.subjects.forEach((si, idx) => {
-      const subName = headers[si] || ('Subject ' + (idx + 1));
-      const val = parseFloat(row[si]) || 0;
-      subjects[subName] = val;
-      if(columnMapping.total < 0) total += val;
+      const subjects = {};
+      let total = 0;
+      if(columnMapping.total >= 0) {
+        total = parseFloat(row[columnMapping.total]) || 0;
+      }
+      columnMapping.subjects.forEach((si, idx) => {
+        const subName = fHeaders[si] || ('Subject ' + (idx + 1));
+        const val = parseFloat(row[si]) || 0;
+        subjects[subName] = val;
+        if(columnMapping.total < 0) total += val;
+      });
+
+      newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
     });
-
-    newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
   });
 
   const acadPts = CATS['Academics'].points;
   const commonLabel = document.getElementById('importCommonLabel').value.trim();
 
+  const aggregate = (visitor) => {
+    files.forEach(file => file.rows.forEach(row => visitor(row)));
+  };
+
   if(commonLabel) {
-    // Combined ranking across all classes under a single common label
+    // Combined ranking across ALL loaded files under a single common label
     const houseData = {};
-    rows.forEach(row => {
+    aggregate(row => {
       const house = String(row[columnMapping.house] || '').trim();
       const name = String(row[columnMapping.name] || '').trim();
       if(!HOUSES.includes(house) || !name) return;
@@ -3661,10 +3726,10 @@ async function importData() {
       }
     });
   } else {
-    // Add entries with Grade subCategories
+    // Add entries with Grade subCategories (aggregated across all loaded files)
     const selectedGrade = document.getElementById('importGrade').value;
     const classHouseData = {};
-    rows.forEach(row => {
+    aggregate(row => {
       const house = String(row[columnMapping.house] || '').trim();
       const name = String(row[columnMapping.name] || '').trim();
       const cls = gradeOf(selectedGrade) || (columnMapping.class >= 0 ? gradeOf(row[columnMapping.class]) || 'Unassigned' : 'All');
@@ -3737,10 +3802,13 @@ async function importData() {
 
 function clearFile() {
   rawExcelData = [];
+  window._pendingFiles = [];
   columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
   window._importResults = null;
   saveData('vivaHouseMapping', columnMapping);
   document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('fileList').style.display = 'none';
+  document.getElementById('fileList').innerHTML = '';
   document.getElementById('importActions').style.display = 'none';
   document.getElementById('importBtn').style.display = 'none';
   document.getElementById('houseResults').style.display = 'none';

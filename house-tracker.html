@@ -1528,7 +1528,6 @@
   <button class="nav-tab active" data-view="dashboard">Dashboard</button>
   <button class="nav-tab admin-only" data-view="import">Excel Import</button>
   <button class="nav-tab" data-view="houses">Houses</button>
-  <button class="nav-tab" data-view="comparison">Comparison</button>
   <button class="nav-tab" data-view="charts">Analytics</button>
   <button class="nav-tab" data-view="monthly">Monthly</button>
   <button class="nav-tab" data-view="awards">Awards</button>
@@ -1645,14 +1644,6 @@
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
     <div id="academicSummaryContainer"></div>
-  </div>
-
-  <!-- COMPARISON VIEW -->
-  <div class="view" id="comparisonView">
-    <div class="section-header">
-      <div class="section-title">Category Comparison</div>
-    </div>
-    <table class="comparison-table" id="comparisonTable"></table>
   </div>
 
   <!-- CHARTS VIEW -->
@@ -2371,7 +2362,6 @@ function calcPoints(cat,sub,pos) {
 function render() {
   renderDashboard();
   renderHouseDetails();
-  renderComparison();
   renderCharts();
   renderMonthlyStats();
   renderAwards();
@@ -2823,37 +2813,6 @@ function renderFromAcadWithStudentData(container, acadEntries) {
 
   html += `</tbody></table></div></div>`;
   container.innerHTML = html;
-}
-
-function renderComparison() {
-  const sorted = getSorted();
-  const cats = Object.keys(CATS);
-  const catColors = cats.map(c => CATS[c].color);
-
-  let html = `
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>House</th>
-        ${cats.map(c=>`<th style="color:${CAT_COLOR_DARK[c] || CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  sorted.forEach((h,i) => {
-    const rankBadge = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
-    html += `
-      <tr>
-        <td><span class="rank-badge ${rankBadge}">${i+1}</span></td>
-        <td><span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span></td>
-        ${cats.map(c=>`<td style="color:${CATS[c].color};font-weight:600">${getCatTotal(h.house,c)}</td>`).join('')}
-        <td class="cell-total" style="color:${HCOLOR[h.house]}">${h.total}</td>
-      </tr>`;
-  });
-
-  html += '</tbody>';
-  document.getElementById('comparisonTable').innerHTML = html;
 }
 
 function renderCharts() {

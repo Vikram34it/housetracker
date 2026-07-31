@@ -2385,7 +2385,7 @@ function renderHouseDetails() {
 
   document.getElementById('houseDetails').innerHTML = sorted.map((h,i) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
-    const rankColors = ['rgba(251,191,36,0.2);color:#fbbf24','rgba(226,232,240,0.2);color:#e2e8f0','rgba(245,158,11,0.2);color:#f59e0b','rgba(148,163,184,0.2);color:#94a3b8','rgba(148,163,184,0.2);color:#94a3b8'];
+    const rankColors = ['rgba(251,191,36,0.25);color:#b45309','rgba(148,163,184,0.4);color:#64748b','rgba(245,158,11,0.25);color:#b45309','rgba(148,163,184,0.15);color:#64748b','rgba(148,163,184,0.15);color:#64748b'];
     const bars = cats.map(c => {
       const v = getCatTotal(h.house,c);
       const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;

@@ -1725,7 +1725,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Sub-Category</label>
-          <select class="form-select" id="bulkSubCategory"></select>
+          <select class="form-select" id="bulkSubCategory" onchange="updateBulkSub()"></select>
         </div>
       </div>
       <div class="form-group">
@@ -2417,7 +2417,10 @@ function renderAcademicSummary() {
   const container = document.getElementById('academicSummaryContainer');
 
   const acadEntries = entries.filter(e => e.category === 'Academics');
-  const classEntries = acadEntries.map(e => ({...e, _grade: gradeOf(e.subCategory) || gradeOf(e.event)})).filter(e => e._grade !== null);
+  const classEntries = acadEntries.map(e => {
+    const g = gradeOf(e.subCategory) || gradeOf(e.event);
+    return {...e, _grade: g !== null ? g : (e.subCategory || e.event || 'Other')};
+  }).filter(e => e._grade !== null);
 
   // 1) Grade-based entries → class + event breakdown
   if(classEntries.length > 0) {
@@ -3034,20 +3037,39 @@ function updateAddPoints() {
 
 function updateBulkSub() {
   const cat = document.getElementById('bulkCategory').value;
+  const sub = document.getElementById('bulkSubCategory').value;
   const subs = CATS[cat].subs;
   document.getElementById('bulkSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
 
+  const labels = ['District','State','National'].includes(sub)
+    ? ['1st Place','2nd Place','3rd Place','Participation']
+    : ['1st Place','2nd Place','3rd Place','4th Place','5th Place'];
+  const posOptions = labels.map((l,i)=>`<option value="${i+1}">${l}</option>`).join('');
+
   document.getElementById('bulkInputs').innerHTML = `
     <div style="margin-top:16px">
-      <label class="form-label">Points &amp; Notes per House</label>
+      <label class="form-label">Position per House — Points auto-calculated</label>
       ${HOUSES.map(h => `
         <div class="form-group" style="display:flex;align-items:center;gap:10px">
           <span class="house-tag" style="background:${HBGCOLOR[h]};color:${HCOLOR[h]};min-width:100px;text-align:center">${h}</span>
-          <input type="number" class="form-input" id="bulk_${h}" value="0" min="0" style="flex:1">
+          <select class="form-select" id="bulkPos_${h}" style="flex:1" onchange="updateBulkPoints()">${posOptions}</select>
+          <input type="number" class="form-input" id="bulkPts_${h}" value="0" min="0" readonly style="flex:0.5;text-align:center" title="Auto-calculated points">
           <input type="text" class="form-input" id="bulkNote_${h}" placeholder="Note (optional)" style="flex:2">
         </div>
       `).join('')}
     </div>`;
+  updateBulkPoints();
+}
+
+function updateBulkPoints() {
+  const cat = document.getElementById('bulkCategory').value;
+  const sub = document.getElementById('bulkSubCategory').value;
+  HOUSES.forEach(h => {
+    const sel = document.getElementById('bulkPos_'+h);
+    const ptsEl = document.getElementById('bulkPts_'+h);
+    if(!sel || !ptsEl) return;
+    ptsEl.value = calcPoints(cat, sub, parseInt(sel.value));
+  });
 }
 
 // ===== MODALS =====
@@ -3102,13 +3124,16 @@ async function saveBulk() {
   const newEntries = [];
 
   HOUSES.forEach(h => {
-    const pts = parseInt(document.getElementById('bulk_'+h).value) || 0;
+    const sel = document.getElementById('bulkPos_'+h);
+    if(!sel) return;
+    const pos = parseInt(sel.value);
+    const pts = calcPoints(cat, sub, pos);
     if(pts !== 0) {
       const noteEl = document.getElementById('bulkNote_'+h);
       newEntries.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         house: h, category: cat, subCategory: sub,
-        position: 0, points: pts, event, note: noteEl ? noteEl.value : '',
+        position: pos, points: pts, event, note: noteEl ? noteEl.value : '',
         date: new Date().toISOString()
       });
       count++;
@@ -3385,6 +3410,11 @@ function renderPreview() {
         <option value="">Auto (from class column)</option>
         ${CATS.Academics.subs.filter(s => s.startsWith('Grade')).map(g => `<option value="${g}">${g}</option>`).join('')}
       </select>
+    </div>
+    <div>
+      <label class="form-label">Common Label (optional)</label>
+      <input type="text" class="form-input" id="importCommonLabel" placeholder="e.g. TERM-2 ALL CLASSES">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">Combines all classes under one label and ranks the 5 houses together. Overrides Grade/Class.</div>
     </div>`;
   document.getElementById('importActions').style.display = 'grid';
   document.getElementById('importBtn').style.display = 'block';
@@ -3581,34 +3611,33 @@ async function importData() {
     newStudents.push({ name, house, cls, sec, subjects, total, exam: examName, date: new Date().toISOString() });
   });
 
-  // Add entries with Grade subCategories
-  const selectedGrade = document.getElementById('importGrade').value;
-  const classHouseData = {};
-  rows.forEach(row => {
-    const house = String(row[columnMapping.house] || '').trim();
-    const name = String(row[columnMapping.name] || '').trim();
-    const cls = gradeOf(selectedGrade) || (columnMapping.class >= 0 ? gradeOf(row[columnMapping.class]) || 'Unassigned' : 'All');
-    if(!HOUSES.includes(house) || !name) return;
-    let total = 0;
-    if(columnMapping.total >= 0) {
-      total = parseFloat(row[columnMapping.total]) || 0;
-    }
-    columnMapping.subjects.forEach((si) => {
-      if(columnMapping.total < 0) total += (parseFloat(row[si]) || 0);
-    });
-    if(total < 0) return;
-    if(!classHouseData[cls]) classHouseData[cls] = {};
-    if(!classHouseData[cls][house]) classHouseData[cls][house] = { total: 0, count: 0 };
-    classHouseData[cls][house].total += total;
-    classHouseData[cls][house].count++;
-  });
-
   const acadPts = CATS['Academics'].points;
-  Object.keys(classHouseData).forEach(cls => {
+  const commonLabel = document.getElementById('importCommonLabel').value.trim();
+
+  if(commonLabel) {
+    // Combined ranking across all classes under a single common label
+    const houseData = {};
+    rows.forEach(row => {
+      const house = String(row[columnMapping.house] || '').trim();
+      const name = String(row[columnMapping.name] || '').trim();
+      if(!HOUSES.includes(house) || !name) return;
+      let total = 0;
+      if(columnMapping.total >= 0) {
+        total = parseFloat(row[columnMapping.total]) || 0;
+      }
+      columnMapping.subjects.forEach((si) => {
+        if(columnMapping.total < 0) total += (parseFloat(row[si]) || 0);
+      });
+      if(total < 0) return;
+      if(!houseData[house]) houseData[house] = { total: 0, count: 0 };
+      houseData[house].total += total;
+      houseData[house].count++;
+    });
+
     const houses = HOUSES.map(h => ({
       house: h,
-      avg: classHouseData[cls][h] ? (classHouseData[cls][h].total / classHouseData[cls][h].count) : 0,
-      count: classHouseData[cls][h] ? classHouseData[cls][h].count : 0
+      avg: houseData[h] ? (houseData[h].total / houseData[h].count) : 0,
+      count: houseData[h] ? houseData[h].count : 0
     }));
     houses.sort((a, b) => b.avg - a.avg);
 
@@ -3620,7 +3649,7 @@ async function importData() {
           id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
           house: h.house,
           category: category,
-          subCategory: 'Grade ' + cls,
+          subCategory: commonLabel,
           position: i + 1,
           points: pts,
           event: examName,
@@ -3631,7 +3660,58 @@ async function importData() {
         count++;
       }
     });
-  });
+  } else {
+    // Add entries with Grade subCategories
+    const selectedGrade = document.getElementById('importGrade').value;
+    const classHouseData = {};
+    rows.forEach(row => {
+      const house = String(row[columnMapping.house] || '').trim();
+      const name = String(row[columnMapping.name] || '').trim();
+      const cls = gradeOf(selectedGrade) || (columnMapping.class >= 0 ? gradeOf(row[columnMapping.class]) || 'Unassigned' : 'All');
+      if(!HOUSES.includes(house) || !name) return;
+      let total = 0;
+      if(columnMapping.total >= 0) {
+        total = parseFloat(row[columnMapping.total]) || 0;
+      }
+      columnMapping.subjects.forEach((si) => {
+        if(columnMapping.total < 0) total += (parseFloat(row[si]) || 0);
+      });
+      if(total < 0) return;
+      if(!classHouseData[cls]) classHouseData[cls] = {};
+      if(!classHouseData[cls][house]) classHouseData[cls][house] = { total: 0, count: 0 };
+      classHouseData[cls][house].total += total;
+      classHouseData[cls][house].count++;
+    });
+
+    Object.keys(classHouseData).forEach(cls => {
+      const houses = HOUSES.map(h => ({
+        house: h,
+        avg: classHouseData[cls][h] ? (classHouseData[cls][h].total / classHouseData[cls][h].count) : 0,
+        count: classHouseData[cls][h] ? classHouseData[cls][h].count : 0
+      }));
+      houses.sort((a, b) => b.avg - a.avg);
+
+      houses.forEach((h, i) => {
+        if(h.count === 0) return;
+        const pts = acadPts[i] || 0;
+        if(pts > 0) {
+          newEntries.push({
+            id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
+            house: h.house,
+            category: category,
+            subCategory: 'Grade ' + cls,
+            position: i + 1,
+            points: pts,
+            event: examName,
+            note: `Avg: ${h.avg.toFixed(1)} | ${h.count} students`,
+            date: new Date().toISOString(),
+            exam: examName
+          });
+          count++;
+        }
+      });
+    });
+  }
 
   try {
     showSaving();

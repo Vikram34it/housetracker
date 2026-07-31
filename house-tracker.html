@@ -2522,7 +2522,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
     const isFirst = renderedRows === 0;
     renderedRows++;
     if(!ov.hasOverall || !isFirst) return '';
-    return `<td class="house-cell" style="border-left:2px solid var(--border);color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
   };
 
   const avgOf = (cls, event, house) => {
@@ -2537,9 +2537,9 @@ function renderFromEntries(container, classEntries, acadEntries) {
     <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
+        ${ov.hasOverall ? `<th>Exam Type</th>` : ''}
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
-        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">Exam Type</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2554,7 +2554,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       const rankMap = {};
       houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr><td class="cls-cell">${cls}</td>`;
+      html += `<tr>` + examTypeCell() + `<td class="cls-cell">${cls}</td>`;
       HOUSES.forEach(h => {
         const d = studentAvgs[cls] && studentAvgs[cls][h];
         if(!d || d.count === 0) {
@@ -2570,7 +2570,6 @@ function renderFromEntries(container, classEntries, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
-      html += examTypeCell();
       html += `</tr>`;
       return;
     }
@@ -2591,8 +2590,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       const rankMap = {};
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>
-        ${ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : ''}`;
+      html += `<tr>` + examTypeCell() + (ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : '');
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) {
@@ -2612,7 +2610,6 @@ function renderFromEntries(container, classEntries, acadEntries) {
           ${avgHtml}<span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
         </td>`;
       });
-      html += examTypeCell();
       html += `</tr>`;
     });
   });
@@ -2778,7 +2775,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     const isFirst = renderedRows === 0;
     renderedRows++;
     if(!ov.hasOverall || !isFirst) return '';
-    return `<td class="house-cell" style="border-left:2px solid var(--border);color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
   };
 
   let html = `<div class="academic-summary">
@@ -2786,9 +2783,9 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
+        ${ov.hasOverall ? `<th>Exam Type</th>` : ''}
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
-        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">Exam Type</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2803,8 +2800,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       const rankMap = {};
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>
-        ${ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${cls}</td>` : ''}`;
+      html += `<tr>` + examTypeCell() + (ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${cls}</td>` : '');
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) { html += `<td class="house-cell" style="color:var(--muted)">—</td>`; return; }
@@ -2818,7 +2814,6 @@ function renderFromAcadWithStudentData(container, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
-      html += examTypeCell();
       html += `</tr>`;
     });
   });

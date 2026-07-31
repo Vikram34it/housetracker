@@ -929,10 +929,10 @@
   }
 
   .hc-event-name {
-    font-size: 12px;
-    color: var(--muted);
+    font-size: 0.8rem;
+    color: var(--text);
     margin-bottom: 2px;
-    font-weight: 500;
+    font-weight: 700;
   }
 
   .academic-summary-table .no-data {
@@ -1948,6 +1948,17 @@ const CAT_LABELS = {
   'Unique Contributions':'Unique Contribution','Disciplinary':'Discipline & Conduct'
 };
 
+function gradeOf(v) {
+  if(v === null || v === undefined) return null;
+  const s = String(v).trim().toUpperCase();
+  if(!s) return null;
+  const token = s.split(/[^0-9XIV]+/).find(p => p.length > 0);
+  if(!token) return null;
+  const roman = { VI:6, VII:7, VIII:8, IX:9, X:10, XI:11, XII:12 };
+  const g = roman[token] || parseInt(token, 10);
+  return (g >= 6 && g <= 12) ? g : null;
+}
+
 // ===== API HELPERS =====
 async function apiGet(action, params = {}) {
   const url = new URL(APPS_SCRIPT_URL);
@@ -2468,8 +2479,7 @@ function renderAcademicSummary() {
   const container = document.getElementById('academicSummaryContainer');
 
   const acadEntries = entries.filter(e => e.category === 'Academics');
-  const gradeSubs = CATS.Academics.subs.filter(s => s.startsWith('Grade'));
-  const classEntries = acadEntries.filter(e => gradeSubs.includes(e.subCategory));
+  const classEntries = acadEntries.map(e => ({...e, _grade: gradeOf(e.subCategory)})).filter(e => e._grade !== null);
 
   // 1) Grade-based entries → class + event breakdown
   if(classEntries.length > 0) {
@@ -2495,7 +2505,7 @@ function renderAcademicSummary() {
 function renderFromEntries(container, classEntries) {
   const classEventData = {};
   classEntries.forEach(e => {
-    const cls = e.subCategory.replace('Grade ', '');
+    const cls = e._grade;
     const event = e.event || 'General';
     if(!classEventData[cls]) classEventData[cls] = {};
     if(!classEventData[cls][event]) classEventData[cls][event] = {};
@@ -2507,7 +2517,7 @@ function renderFromEntries(container, classEntries) {
   const studentAvgs = {};
   if(studentData && studentData.length > 0) {
     studentData.forEach(s => {
-      const cls = s.cls || 'Unassigned';
+      const cls = gradeOf(s.cls) || 'Unassigned';
       if(!studentAvgs[cls]) studentAvgs[cls] = {};
       if(!studentAvgs[cls][s.house]) studentAvgs[cls][s.house] = { total: 0, count: 0 };
       studentAvgs[cls][s.house].total += s.total || 0;
@@ -2562,13 +2572,13 @@ function renderFromEntries(container, classEntries) {
         if(studentAvgs[cls] && studentAvgs[cls][h]) {
           const sa = studentAvgs[cls][h];
           const avg = Math.round((sa.total / sa.count) * 10) / 10;
-          avgHtml = `<span style="font-weight:700;font-size:0.85rem">${avg}</span> `;
+          avgHtml = `<span style="font-weight:800;font-size:1.15rem;color:var(--text)">${avg}</span> `;
         }
 
-        html += `<td class="house-cell" style="color:${HCOLOR[h]}">
+        html += `<td class="house-cell" style="color:var(--text)">
           <div class="hc-event-name">${event}</div>
-          ${avgHtml}<span style="font-size:0.7rem;color:var(--muted)">${label}</span>
-          <span style="font-weight:700;font-size:0.85rem"> ${pts}pts</span>
+          ${avgHtml}<span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
+          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
         </td>`;
       });
       html += `</tr>`;
@@ -2583,7 +2593,7 @@ function renderFromStudentData(container) {
   // Group students by class and house
   const classHouseData = {};
   studentData.forEach(s => {
-    const cls = s.cls || 'Unassigned';
+    const cls = gradeOf(s.cls) || 'Unassigned';
     if(!classHouseData[cls]) classHouseData[cls] = {};
     if(!classHouseData[cls][s.house]) classHouseData[cls][s.house] = { total: 0, count: 0 };
     classHouseData[cls][s.house].total += s.total || 0;
@@ -2628,10 +2638,10 @@ function renderFromStudentData(container) {
       const rank = rankMap[h];
       const label = rankLabels[rank] || `${rank+1}th`;
       const pts = acadPoints[rank] || 0;
-      html += `<td class="house-cell" style="color:${HCOLOR[h]}">
-        <span style="font-weight:700;font-size:1rem">${houseAvgs[rank].avg}</span>
-        <span style="font-size:0.7rem;color:var(--muted)"> ${label}</span>
-        <span style="font-weight:700;font-size:0.9rem"> ${pts}</span>
+      html += `<td class="house-cell" style="color:var(--text)">
+        <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${houseAvgs[rank].avg}</span>
+        <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
+        <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}</span>
       </td>`;
     });
     html += `</tr>`;
@@ -2695,11 +2705,11 @@ function renderFromAcadEntries(container, acadEntries) {
       const label = rankLabels[rank] || `${rank+1}th`;
       const pts = acadPoints[rank] || 0;
       let avgStr = d.avgCount > 0 ? (d.avgSum / d.avgCount).toFixed(1) : '';
-      html += `<td class="house-cell" style="color:${HCOLOR[h]}">
-        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${event}</div>
-        ${avgStr ? `<span style="font-weight:700;font-size:0.85rem">${avgStr}</span> ` : ''}
-        <span style="font-size:0.7rem;color:var(--muted)">${label}</span>
-        <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
+      html += `<td class="house-cell" style="color:var(--text)">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-bottom:2px">${event}</div>
+        ${avgStr ? `<span style="font-weight:800;font-size:1.15rem;color:var(--text)">${avgStr}</span> ` : ''}
+        <span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
+        <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
       </td>`;
     });
     html += `</tr>`;
@@ -2713,7 +2723,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   // Group studentData by class and exam, compute per-house averages
   const classEventData = {};
   studentData.forEach(s => {
-    const cls = s.cls || 'Unassigned';
+    const cls = gradeOf(s.cls) || 'Unassigned';
     const exam = s.exam || 'General';
     if(!classEventData[cls]) classEventData[cls] = {};
     if(!classEventData[cls][exam]) classEventData[cls][exam] = {};
@@ -2761,11 +2771,11 @@ function renderFromAcadWithStudentData(container, acadEntries) {
         const label = rankLabels[rank] || `${rank+1}th`;
         const pts = acadPoints[rank] || 0;
         const avg = d.total / d.count;
-        html += `<td class="house-cell" style="color:${HCOLOR[h]}">
-          <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px">${exam}</div>
-          <span style="font-weight:700;font-size:0.85rem">${avg.toFixed(1)}</span>
-          <span style="font-size:0.7rem;color:var(--muted)"> ${label}</span>
-          <span style="font-weight:700;font-size:0.9rem"> ${pts}pts</span>
+        html += `<td class="house-cell" style="color:var(--text)">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-bottom:2px">${exam}</div>
+          <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${avg.toFixed(1)}</span>
+          <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
+          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}pts</span>
         </td>`;
       });
       html += `</tr>`;
@@ -3823,7 +3833,7 @@ async function importData() {
   rows.forEach(row => {
     const house = String(row[columnMapping.house] || '').trim();
     const name = String(row[columnMapping.name] || '').trim();
-    const cls = selectedGrade || (columnMapping.class >= 0 ? String(row[columnMapping.class] || '').trim() || 'Unassigned' : 'All');
+    const cls = gradeOf(selectedGrade) || (columnMapping.class >= 0 ? gradeOf(row[columnMapping.class]) || 'Unassigned' : 'All');
     if(!HOUSES.includes(house) || !name) return;
     let total = 0;
     if(columnMapping.total >= 0) {

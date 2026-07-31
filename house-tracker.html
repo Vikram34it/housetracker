@@ -2249,7 +2249,14 @@ async function restoreBackup(event) {
 // ===== HELPERS =====
 function getHouseTotal(h) { return entries.filter(e=>e.house===h).reduce((s,e)=>s+e.points,0); }
 function getCatTotal(h,c) { return entries.filter(e=>e.house===h&&e.category===c).reduce((s,e)=>s+e.points,0); }
-function getSorted() { return HOUSES.map(h=>({house:h,total:getHouseTotal(h)})).sort((a,b)=>b.total-a.total); }
+function getSorted() {
+  const arr = HOUSES.map(h=>({house:h,total:getHouseTotal(h)})).sort((a,b)=>b.total-a.total);
+  arr.forEach((h,i) => {
+    if(i === 0 || h.total !== arr[i-1].total) h.rank = i + 1;
+    else h.rank = arr[i-1].rank;
+  });
+  return arr;
+}
 function getMaxCat(h) { const cats=Object.keys(CATS); let max=0,c=''; cats.forEach(c2=>{const v=getCatTotal(h,c2);if(v>max){max=v;c=c2;}}); return {cat:c,val:max}; }
 
 // ===== MONTHLY HELPERS =====
@@ -2266,7 +2273,12 @@ function getCatTotalMonth(h, c, ym) {
 }
 
 function getSortedMonth(ym) {
-  return HOUSES.map(h => ({ house: h, total: getHouseTotalMonth(h, ym) })).sort((a, b) => b.total - a.total);
+  const arr = HOUSES.map(h => ({ house: h, total: getHouseTotalMonth(h, ym) })).sort((a, b) => b.total - a.total);
+  arr.forEach((h,i) => {
+    if(i === 0 || h.total !== arr[i-1].total) h.rank = i + 1;
+    else h.rank = arr[i-1].rank;
+  });
+  return arr;
 }
 
 function getAvailableMonths() {
@@ -2385,9 +2397,11 @@ function renderHouseDetails() {
   const maxPts = Math.max(...sorted.map(s=>s.total),1);
   const cats = Object.keys(CATS);
 
-  document.getElementById('houseDetails').innerHTML = sorted.map((h,i) => {
+  document.getElementById('houseDetails').innerHTML = sorted.map((h) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
     const rankColors = ['rgba(251,191,36,0.25);color:#b45309','rgba(148,163,184,0.4);color:#64748b','rgba(245,158,11,0.25);color:#b45309','rgba(148,163,184,0.15);color:#64748b','rgba(148,163,184,0.15);color:#64748b'];
+    const badge = rankLabels[h.rank-1] || '#' + h.rank;
+    const rc = rankColors[h.rank-1] || 'rgba(148,163,184,0.15);color:#64748b';
     const bars = cats.map(c => {
       const v = getCatTotal(h.house,c);
       const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;
@@ -2405,7 +2419,7 @@ function renderHouseDetails() {
       <div class="house-detail-card" style="border-top:3px solid ${HCOLOR[h.house]}">
         <div class="house-detail-header">
           <div class="house-detail-name" style="color:${HCOLOR[h.house]}">${h.house}</div>
-          <div class="house-detail-rank ${i < 3 ? 'is-medal' : ''}" style="background:${rankColors[i].split(';')[0]};${rankColors[i].split(';')[1]}">${rankLabels[i]}</div>
+          <div class="house-detail-rank ${h.rank <= 3 ? 'is-medal' : ''}" style="background:${rc.split(';')[0]};${rc.split(';')[1]}">${badge}</div>
         </div>
         <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
         <div class="category-bars">${bars}</div>
@@ -2863,10 +2877,10 @@ function renderMonthlyStats() {
 
   // Monthly comparison table
   let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CAT_COLOR_DARK[c] || CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
-  sorted.forEach((h, i) => {
-    const rankBadge = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+  sorted.forEach((h) => {
+    const rankBadge = h.rank === 1 ? 'rank-1' : h.rank === 2 ? 'rank-2' : h.rank === 3 ? 'rank-3' : '';
     tableHtml += `<tr>
-      <td><span class="rank-badge ${rankBadge}">${i + 1}</span></td>
+      <td><span class="rank-badge ${rankBadge}">${h.rank}</span></td>
       <td><span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span></td>
       ${cats.map(c => `<td style="color:${CATS[c].color};font-weight:600">${getCatTotalMonth(h.house, c, currentMonth)}</td>`).join('')}
       <td class="cell-total" style="color:${HCOLOR[h.house]}">${h.total}</td>

@@ -781,10 +781,10 @@
   }
 
   .house-detail-rank {
-    font-size: 0.9rem;
-    padding: 6px 14px;
+    font-size: 1.6rem;
+    padding: 6px 18px;
     border-radius: 20px;
-    font-weight: 800;
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 1px;
   }
@@ -2378,7 +2378,7 @@ function renderHouseDetails() {
   const cats = Object.keys(CATS);
 
   document.getElementById('houseDetails').innerHTML = sorted.map((h,i) => {
-    const rankLabels = ['🏆 1st','🥈 2nd','🥉 3rd','4th','5th'];
+    const rankLabels = ['🥇','🥈','🥉','4th','5th'];
     const rankColors = ['rgba(251,191,36,0.2);color:#fbbf24','rgba(226,232,240,0.2);color:#e2e8f0','rgba(245,158,11,0.2);color:#f59e0b','rgba(148,163,184,0.2);color:#94a3b8','rgba(148,163,184,0.2);color:#94a3b8'];
     const bars = cats.map(c => {
       const v = getCatTotal(h.house,c);

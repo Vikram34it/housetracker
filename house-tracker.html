@@ -1922,6 +1922,8 @@ const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
 const HCLASS = { Compassion:'compassion', Courage:'courage', Honesty:'honesty', Loyalty:'loyalty', Truth:'truth' };
 const HCOLOR = { Compassion:'#22C55E', Courage:'#EF4444', Honesty:'#3B82F6', Loyalty:'#EAB308', Truth:'#8B5CF6' };
 const HBGCOLOR = { Compassion:'rgba(34,197,94,0.12)', Courage:'rgba(239,68,68,0.12)', Honesty:'rgba(59,130,246,0.12)', Loyalty:'rgba(234,179,8,0.12)', Truth:'rgba(139,92,246,0.12)' };
+const HCOLOR_DARK = { Compassion:'#166534', Courage:'#991B1B', Honesty:'#1E40AF', Loyalty:'#854D0E', Truth:'#5B21B6' };
+const CAT_COLOR_DARK = { 'Academics':'#B91C1C', 'Sports':'#B45309', 'Co-Curricular':'#047857', 'Unique Contributions':'#1D4ED8', 'Disciplinary':'#7E22CE' };
 
 const CATS = {
   'Academics': { points:[30,25,20,15,10], subs:['Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'], color:'#f87171' },
@@ -2546,7 +2548,7 @@ function renderFromEntries(container, classEntries) {
     <table class="academic-summary-table">
       <thead><tr>
         <th>Grade</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
+        ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2652,7 +2654,7 @@ function renderFromStudentData(container) {
     <table class="academic-summary-table">
       <thead><tr>
         <th>Grade</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
+        ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2721,7 +2723,7 @@ function renderFromAcadEntries(container, acadEntries) {
     <table class="academic-summary-table">
       <thead><tr>
         <th>Grade</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
+        ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   events.forEach(event => {
@@ -2784,7 +2786,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     <table class="academic-summary-table">
       <thead><tr>
         <th>Grade</th>
-        ${HOUSES.map(h => `<th style="color:${HCOLOR[h]}">${h} House</th>`).join('')}
+        ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2833,7 +2835,7 @@ function renderComparison() {
       <tr>
         <th>#</th>
         <th>House</th>
-        ${cats.map(c=>`<th style="color:${CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}
+        ${cats.map(c=>`<th style="color:${CAT_COLOR_DARK[c] || CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}
         <th>Total</th>
       </tr>
     </thead>
@@ -3140,7 +3142,7 @@ function renderMonthlyStats() {
   }).join('');
 
   // Monthly comparison table
-  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CAT_COLOR_DARK[c] || CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
   sorted.forEach((h, i) => {
     const rankBadge = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
     tableHtml += `<tr>

@@ -806,9 +806,10 @@
   }
 
   .cat-bar-label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    width: 80px;
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 700;
+    width: 100px;
     flex-shrink: 0;
   }
 
@@ -827,9 +828,10 @@
   }
 
   .cat-bar-value {
-    font-size: 0.8rem;
-    font-weight: 700;
-    width: 35px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text);
+    width: 45px;
     text-align: right;
   }
 
@@ -2457,7 +2459,7 @@ function renderHouseDetails() {
           <div class="cat-bar-track">
             <div class="cat-bar-fill" style="width:${pct}%;background:${CATS[c].color}"></div>
           </div>
-          <div class="cat-bar-value" style="color:${CATS[c].color}">${v}</div>
+          <div class="cat-bar-value">${v}</div>
         </div>`;
     }).join('');
 

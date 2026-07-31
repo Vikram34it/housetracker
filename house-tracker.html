@@ -3674,29 +3674,33 @@ async function importData() {
 
   const acadPts = CATS['Academics'].points;
   const commonLabel = document.getElementById('importCommonLabel').value.trim();
+  let replacedCount = 0;
 
   const aggregate = (visitor) => {
     files.forEach(file => file.rows.forEach(row => visitor(row)));
   };
 
   if(commonLabel) {
-    // Combined ranking across ALL loaded files under a single common label
+    // Overall ranking rebuilt from ALL students belonging to this common label,
+    // across every grade file. Existing same-label entries are replaced, so
+    // importing each grade file one by one converges to a single overall result.
+    const labelExams = new Set();
+    entries.forEach(e => { if(e.subCategory === commonLabel && e.event) labelExams.add(e.event); });
+    labelExams.add(examName);
+
+    const oldLabelEntries = entries.filter(e => e.subCategory === commonLabel);
+    replacedCount = oldLabelEntries.length;
+
+    const dedupedNewStudents = newStudents.filter(ns =>
+      !studentData.some(s => s.exam === ns.exam && s.name === ns.name));
+
     const houseData = {};
-    aggregate(row => {
-      const house = String(row[columnMapping.house] || '').trim();
-      const name = String(row[columnMapping.name] || '').trim();
-      if(!HOUSES.includes(house) || !name) return;
-      let total = 0;
-      if(columnMapping.total >= 0) {
-        total = parseFloat(row[columnMapping.total]) || 0;
-      }
-      columnMapping.subjects.forEach((si) => {
-        if(columnMapping.total < 0) total += (parseFloat(row[si]) || 0);
-      });
-      if(total < 0) return;
-      if(!houseData[house]) houseData[house] = { total: 0, count: 0 };
-      houseData[house].total += total;
-      houseData[house].count++;
+    studentData.concat(dedupedNewStudents).forEach(s => {
+      if(!labelExams.has(s.exam)) return;
+      if(!HOUSES.includes(s.house)) return;
+      if(!houseData[s.house]) houseData[s.house] = { total: 0, count: 0 };
+      houseData[s.house].total += s.total || 0;
+      houseData[s.house].count++;
     });
 
     const houses = HOUSES.map(h => ({
@@ -3788,13 +3792,22 @@ async function importData() {
       category: category
     });
     
+    if(replacedCount > 0) {
+      const oldIds = entries.filter(e => e.subCategory === commonLabel).map(e => e.id);
+      if(oldIds.length > 0) await apiPost({action: 'deleteEntries', ids: oldIds});
+      entries = entries.filter(e => e.subCategory !== commonLabel);
+    }
     entries.push(...newEntries);
-    studentData.push(...newStudents);
+    newStudents.forEach(ns => { if(!studentData.some(s => s.exam === ns.exam && s.name === ns.name)) studentData.push(ns); });
     
     clearFile();
     render();
     showSaved();
-    showToast(`Imported points for ${count} houses from "${examName}"`, 'success');
+    if(commonLabel) {
+      showToast(`Overall ranking for "${commonLabel}" imported — ${count} houses` + (replacedCount > 0 ? `, replaced ${replacedCount} old entries` : ''), 'success');
+    } else {
+      showToast(`Imported points for ${count} houses from "${examName}"`, 'success');
+    }
   } catch(err) {
     showToast('Failed to import: ' + err.message, 'error');
   }

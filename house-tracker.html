@@ -540,7 +540,6 @@
 
   [data-theme="vibrant"] .badge { background: rgba(124,58,237,0.1); color: #7c3aed; }
 
-  [data-theme="vibrant"] .chart-card { background: #ffffff; }
   [data-theme="vibrant"] .comparison-card { background: #ffffff; }
   [data-theme="vibrant"] .house-detail-card { background: #ffffff; }
 
@@ -958,53 +957,6 @@
   .rank-2 { background: rgba(226,232,240,0.15); color: var(--silver); }
   .rank-3 { background: rgba(245,158,11,0.15); color: var(--bronze); }
 
-  /* CHARTS */
-  .charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 30px;
-  }
-
-  .chart-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
-  }
-
-  .chart-title {
-    font-size: 0.85rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  canvas { width: 100% !important; max-height: 300px; }
-
-  .donut-container { display: flex; align-items: center; gap: 30px; }
-
-  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
-
-  .donut-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.85rem;
-  }
-
-  .donut-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-
-  .donut-label { flex: 1; color: var(--muted); }
-  .donut-value { font-weight: 700; }
-
   /* AWARDS */
   .awards-grid {
     display: grid;
@@ -1393,7 +1345,6 @@
   
   @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
-    .charts-grid { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 768px) {
@@ -1437,7 +1388,6 @@
     .podium { flex-direction: column; align-items: center; }
     .podium-spot { order: unset !important; width: 100%; max-width: 280px; min-height: auto; }
     .form-row { grid-template-columns: 1fr; }
-    .donut-container { flex-direction: column; }
     .monthly-podium { flex-direction: column; align-items: center; }
     .month-nav { flex-wrap: wrap; justify-content: flex-end; }
     .comparison-table { font-size: 0.75rem; }
@@ -1464,8 +1414,6 @@
     .house-detail-grid { grid-template-columns: 1fr; }
     .awards-grid { grid-template-columns: 1fr; }
     .award-card { padding: 16px; }
-    .charts-grid { grid-template-columns: 1fr; }
-    .chart-card { padding: 16px; }
     .toast { font-size: 0.8rem; padding: 10px 14px; }
     .btn-icon { width: 32px; height: 32px; }
     table { font-size: 0.7rem; }
@@ -1528,7 +1476,6 @@
   <button class="nav-tab active" data-view="dashboard">Dashboard</button>
   <button class="nav-tab admin-only" data-view="import">Excel Import</button>
   <button class="nav-tab" data-view="houses">Houses</button>
-  <button class="nav-tab" data-view="charts">Analytics</button>
   <button class="nav-tab" data-view="monthly">Monthly</button>
   <button class="nav-tab" data-view="awards">Awards</button>
   <button class="nav-tab" data-view="history">History</button>
@@ -1644,14 +1591,6 @@
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
     <div id="academicSummaryContainer"></div>
-  </div>
-
-  <!-- CHARTS VIEW -->
-  <div class="view" id="chartsView">
-    <div class="section-header">
-      <div class="section-title">Analytics</div>
-    </div>
-    <div class="charts-grid" id="chartsGrid"></div>
   </div>
 
   <!-- AWARDS VIEW -->
@@ -2362,7 +2301,6 @@ function calcPoints(cat,sub,pos) {
 function render() {
   renderDashboard();
   renderHouseDetails();
-  renderCharts();
   renderMonthlyStats();
   renderAwards();
   renderHistory();
@@ -2813,201 +2751,6 @@ function renderFromAcadWithStudentData(container, acadEntries) {
 
   html += `</tbody></table></div></div>`;
   container.innerHTML = html;
-}
-
-function renderCharts() {
-  const sorted = getSorted();
-  const cats = Object.keys(CATS);
-  const canvas1 = document.createElement('canvas');
-  const canvas2 = document.createElement('canvas');
-  canvas1.id = 'barChart';
-  canvas2.id = 'donutChart';
-
-  document.getElementById('chartsGrid').innerHTML = `
-    <div class="chart-card">
-      <div class="chart-title">Total Points Comparison</div>
-      <canvas id="barChart"></canvas>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Points Distribution</div>
-      <div class="donut-container">
-        <canvas id="donutChart" width="200" height="200"></canvas>
-        <div class="donut-legend" id="donutLegend"></div>
-      </div>
-    </div>
-    <div class="chart-card" style="grid-column:1/-1">
-      <div class="chart-title">Category Breakdown by House</div>
-      <canvas id="stackedChart"></canvas>
-    </div>`;
-
-  setTimeout(() => {
-    drawBarChart(sorted);
-    drawDonutChart(sorted);
-    drawStackedChart(sorted);
-  }, 50);
-}
-
-function drawBarChart(sorted) {
-  const canvas = document.getElementById('barChart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = 280 * dpr;
-  canvas.style.height = '280px';
-  ctx.scale(dpr, dpr);
-  const W = rect.width, H = 280;
-
-  const maxPts = Math.max(...sorted.map(s=>s.total),1);
-  const barW = Math.min(60, (W - 80) / sorted.length - 16);
-  const chartH = H - 60;
-  const startX = (W - (barW + 16) * sorted.length) / 2;
-
-  // Grid
-  ctx.strokeStyle = 'rgba(148,163,184,0.1)';
-  ctx.lineWidth = 1;
-  for(let i = 0; i <= 5; i++) {
-    const y = 20 + (chartH / 5) * i;
-    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 10, y); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
-    ctx.fillText(Math.round(maxPts * (5-i)/5), 35, y + 4);
-  }
-
-  // Bars
-  sorted.forEach((h,i) => {
-    const x = startX + i * (barW + 16);
-    const barH = (h.total / maxPts) * chartH;
-    const y = 20 + chartH - barH;
-
-    const grad = ctx.createLinearGradient(x, y, x, 20 + chartH);
-    grad.addColorStop(0, HCOLOR[h.house]);
-    grad.addColorStop(1, HCOLOR[h.house] + '33');
-    ctx.fillStyle = grad;
-
-    // Rounded top
-    const r = 6;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + barW - r, y);
-    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
-    ctx.lineTo(x + barW, 20 + chartH);
-    ctx.lineTo(x, 20 + chartH);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.fill();
-
-    // Value
-    ctx.fillStyle = HCOLOR[h.house];
-    ctx.font = 'bold 13px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText(h.total, x + barW/2, y - 8);
-
-    // Label
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px Inter';
-    ctx.fillText(h.house.slice(0,6), x + barW/2, H - 10);
-  });
-}
-
-function drawDonutChart(sorted) {
-  const canvas = document.getElementById('donutChart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = 200 * dpr; canvas.height = 200 * dpr;
-  ctx.scale(dpr, dpr);
-
-  const total = sorted.reduce((s,h)=>s+h.total,0) || 1;
-  const cx = 100, cy = 100, r = 80, inner = 50;
-  let startAngle = -Math.PI/2;
-
-  sorted.forEach(h => {
-    const slice = (h.total / total) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, startAngle, startAngle + slice);
-    ctx.arc(cx, cy, inner, startAngle + slice, startAngle, true);
-    ctx.closePath();
-    ctx.fillStyle = HCOLOR[h.house];
-    ctx.fill();
-    startAngle += slice;
-  });
-
-  // Center text
-  ctx.fillStyle = '#f1f5f9';
-  ctx.font = 'bold 22px Inter';
-  ctx.textAlign = 'center';
-  ctx.fillText(total, cx, cy + 3);
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '10px Inter';
-  ctx.fillText('TOTAL', cx, cy + 18);
-
-  // Legend
-  document.getElementById('donutLegend').innerHTML = sorted.map(h => {
-    const pct = ((h.total/total)*100).toFixed(1);
-    return `<div class="donut-legend-item">
-      <div class="donut-dot" style="background:${HCOLOR[h.house]}"></div>
-      <span class="donut-label">${h.house}</span>
-      <span class="donut-value">${h.total} (${pct}%)</span>
-    </div>`;
-  }).join('');
-}
-
-function drawStackedChart(sorted) {
-  const canvas = document.getElementById('stackedChart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = 300 * dpr;
-  canvas.style.height = '300px';
-  ctx.scale(dpr, dpr);
-  const W = rect.width, H = 300;
-
-  const cats = Object.keys(CATS);
-  const catColors = cats.map(c => CATS[c].color);
-  const maxStack = Math.max(...sorted.map(h => cats.reduce((s,c)=>s+getCatTotal(h,c),0)),1);
-  const barW = Math.min(70, (W - 80) / sorted.length - 16);
-  const chartH = H - 60;
-  const startX = (W - (barW + 16) * sorted.length) / 2;
-
-  // Grid
-  ctx.strokeStyle = 'rgba(148,163,184,0.1)';
-  for(let i = 0; i <= 5; i++) {
-    const y = 20 + (chartH / 5) * i;
-    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 10, y); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
-    ctx.fillText(Math.round(maxStack * (5-i)/5), 35, y + 4);
-  }
-
-  sorted.forEach((h,i) => {
-    const x = startX + i * (barW + 16);
-    let yOff = 20 + chartH;
-
-    cats.forEach((c,ci) => {
-      const v = getCatTotal(h.house,c);
-      const segH = (v / maxStack) * chartH;
-      yOff -= segH;
-
-      ctx.fillStyle = catColors[ci];
-      ctx.beginPath();
-      ctx.roundRect(x, yOff, barW, segH - 1, ci===cats.length-1 ? [0,0,6,6] : 0);
-      ctx.fill();
-
-      if(segH > 18) {
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 10px Inter';
-        ctx.textAlign = 'center';
-        ctx.fillText(v, x + barW/2, yOff + segH/2 + 3);
-      }
-    });
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText(h.house.slice(0,6), x + barW/2, H - 10);
-  });
 }
 
 function renderMonthlyStats() {
@@ -3471,13 +3214,6 @@ document.addEventListener('change', e => {
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if(e.target===m) m.classList.remove('active'); });
-});
-
-// Resize handler for charts
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if(activeView==='charts') renderCharts(); }, 200);
 });
 
 // ===== EXCEL IMPORT =====

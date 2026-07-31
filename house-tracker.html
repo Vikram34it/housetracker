@@ -1732,6 +1732,10 @@
         <label class="form-label">Event / Description</label>
         <input type="text" class="form-input" id="bulkEvent" placeholder="e.g. Inter-House Quiz Competition">
       </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <textarea class="form-textarea" id="bulkNote" placeholder="Any additional details..."></textarea>
+      </div>
       <div id="bulkInputs"></div>
     </div>
     <div class="modal-footer">
@@ -3097,6 +3101,7 @@ async function saveBulk() {
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
   const event = document.getElementById('bulkEvent').value;
+  const note = document.getElementById('bulkNote').value;
   let count = 0;
   const newEntries = [];
 
@@ -3106,7 +3111,7 @@ async function saveBulk() {
       newEntries.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         house: h, category: cat, subCategory: sub,
-        position: 0, points: pts, event, note: '',
+        position: 0, points: pts, event, note,
         date: new Date().toISOString()
       });
       count++;

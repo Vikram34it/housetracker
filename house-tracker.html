@@ -2430,34 +2430,19 @@ function renderHouseDetails() {
 }
 
 function computeOverallData(acadEntries) {
-  // Per-house overall avg + tie-aware rank from non-grade academic entries (e.g. TERM-2 OVERALL)
-  const overallData = {};
+  // Identify non-grade academic entries (common-label overall, e.g. TERM-2 OVERALL)
   const overallLabels = new Set();
+  let matched = 0;
   (acadEntries || []).forEach(e => {
     if(gradeOf(e.subCategory) !== null) return;
     if(!HOUSES.includes(e.house)) return;
-    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
-    if(!m) return;
-    overallData[e.house] = parseFloat(m[1]);
+    if(!String(e.note || '').match(/Avg:\s*([\d.]+)/i)) return;
+    matched++;
     if(e.subCategory) overallLabels.add(e.subCategory);
   });
-  const overallRanked = HOUSES
-    .filter(h => overallData[h] !== undefined)
-    .map(h => ({ house: h, avg: overallData[h] }))
-    .sort((a, b) => b.avg - a.avg);
-  const overallRankMap = {};
-  overallRanked.forEach((h, i) => {
-    if(i > 0 && h.avg === overallRanked[i-1].avg) {
-      overallRankMap[h.house] = overallRankMap[overallRanked[i-1].house];
-    } else {
-      overallRankMap[h.house] = i + 1;
-    }
-  });
   return {
-    overallData,
-    overallRankMap,
-    hasOverall: overallRanked.length > 0,
-    overallHeader: 'Overall' + (overallLabels.size === 1 ? ` (${[...overallLabels][0]})` : '')
+    hasOverall: matched > 0,
+    overallLabel: [...overallLabels].join(', ') || 'Overall'
   };
 }
 
@@ -2531,15 +2516,13 @@ function renderFromEntries(container, classEntries, acadEntries) {
   const acadPoints = CATS.Academics.points;
 
   const ov = computeOverallData(acadEntries);
-  const renderOverallCell = (h, oi) => {
-    const sep = oi === 0 ? 'border-left:2px solid var(--border);' : '';
-    if(ov.overallData[h] === undefined) return `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`;
-    const rank = ov.overallRankMap[h];
-    const label = rankLabels[rank - 1] || `${rank}th`;
-    return `<td class="house-cell" style="${sep}color:var(--text)">
-      <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${ov.overallData[h].toFixed(1)}</span>
-      <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
-    </td>`;
+  const totalRows = classes.reduce((n, cls) => n + Math.max(Object.keys(classEventData[cls] || {}).length, 1), 0);
+  let renderedRows = 0;
+  const examTypeCell = () => {
+    const isFirst = renderedRows === 0;
+    renderedRows++;
+    if(!ov.hasOverall || !isFirst) return '';
+    return `<td class="house-cell" style="border-left:2px solid var(--border);color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
   };
 
   const avgOf = (cls, event, house) => {
@@ -2556,7 +2539,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       <thead><tr>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
-        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">${ov.overallHeader}</th>` : ''}
+        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">Exam Type</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2587,7 +2570,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
-      if(ov.hasOverall) HOUSES.forEach((h, oi) => { html += renderOverallCell(h, oi); });
+      html += examTypeCell();
       html += `</tr>`;
       return;
     }
@@ -2629,7 +2612,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
           ${avgHtml}<span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
         </td>`;
       });
-      if(ov.hasOverall) HOUSES.forEach((h, oi) => { html += renderOverallCell(h, oi); });
+      html += examTypeCell();
       html += `</tr>`;
     });
   });
@@ -2789,6 +2772,14 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   const acadPoints = CATS.Academics.points;
 
   const ov = computeOverallData(acadEntries);
+  const totalRows = classes.reduce((n, cls) => n + Object.keys(classEventData[cls]).length, 0);
+  let renderedRows = 0;
+  const examTypeCell = () => {
+    const isFirst = renderedRows === 0;
+    renderedRows++;
+    if(!ov.hasOverall || !isFirst) return '';
+    return `<td class="house-cell" style="border-left:2px solid var(--border);color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+  };
 
   let html = `<div class="academic-summary">
     <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
@@ -2797,7 +2788,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       <thead><tr>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
-        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">${ov.overallHeader}</th>` : ''}
+        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">Exam Type</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2827,18 +2818,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
-      if(ov.hasOverall) {
-        HOUSES.forEach((h, oi) => {
-          const sep = oi === 0 ? 'border-left:2px solid var(--border);' : '';
-          if(ov.overallData[h] === undefined) { html += `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`; return; }
-          const rank = ov.overallRankMap[h];
-          const label = rankLabels[rank - 1] || `${rank}th`;
-          html += `<td class="house-cell" style="${sep}color:var(--text)">
-            <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${ov.overallData[h].toFixed(1)}</span>
-            <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
-          </td>`;
-        });
-      }
+      html += examTypeCell();
       html += `</tr>`;
     });
   });

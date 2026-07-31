@@ -2741,6 +2741,32 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
   const acadPoints = CATS.Academics.points;
 
+  // Overall column: per-house avg from non-grade academic entries (e.g. TERM-2 OVERALL)
+  const overallData = {};
+  const overallLabels = new Set();
+  acadEntries.forEach(e => {
+    if(gradeOf(e.subCategory) !== null) return;
+    if(!HOUSES.includes(e.house)) return;
+    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
+    if(!m) return;
+    overallData[e.house] = parseFloat(m[1]);
+    if(e.subCategory) overallLabels.add(e.subCategory);
+  });
+  const overallRanked = HOUSES
+    .filter(h => overallData[h] !== undefined)
+    .map(h => ({ house: h, avg: overallData[h] }))
+    .sort((a, b) => b.avg - a.avg);
+  const overallRankMap = {};
+  overallRanked.forEach((h, i) => {
+    if(i > 0 && h.avg === overallRanked[i-1].avg) {
+      overallRankMap[h.house] = overallRankMap[overallRanked[i-1].house];
+    } else {
+      overallRankMap[h.house] = i + 1;
+    }
+  });
+  const hasOverall = overallRanked.length > 0;
+  const overallHeader = 'Overall' + (overallLabels.size === 1 ? ` (${[...overallLabels][0]})` : '');
+
   let html = `<div class="academic-summary">
     <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
     <div class="table-wrapper">
@@ -2748,6 +2774,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       <thead><tr>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
+        ${hasOverall ? `<th style="border-left:2px solid var(--border)">${overallHeader}</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2777,6 +2804,18 @@ function renderFromAcadWithStudentData(container, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
+      if(hasOverall) {
+        HOUSES.forEach((h, oi) => {
+          const sep = oi === 0 ? 'border-left:2px solid var(--border);' : '';
+          if(overallData[h] === undefined) { html += `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`; return; }
+          const rank = overallRankMap[h];
+          const label = rankLabels[rank - 1] || `${rank}th`;
+          html += `<td class="house-cell" style="${sep}color:var(--text)">
+            <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${overallData[h].toFixed(1)}</span>
+            <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
+          </td>`;
+        });
+      }
       html += `</tr>`;
     });
   });

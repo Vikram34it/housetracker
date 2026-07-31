@@ -1945,7 +1945,7 @@ const DISCIPLINARY_PTS = {
 const CAT_LABELS = {
   'Academics':'Academic Excellence','Sports':'Sports Achievement',
   'Co-Curricular':'Co-Curricular Activities',
-  'Unique Contributions':'Unique Contributions & Service','Disciplinary':'Discipline & Conduct'
+  'Unique Contributions':'Unique Contribution','Disciplinary':'Discipline & Conduct'
 };
 
 // ===== API HELPERS =====
@@ -3241,7 +3241,16 @@ function updateAddSub() {
   const cat = document.getElementById('addCategory').value;
   const subs = CATS[cat].subs;
   document.getElementById('addSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  updateAddPositions();
   updateAddPoints();
+}
+
+function updateAddPositions() {
+  const sub = document.getElementById('addSubCategory').value;
+  const labels = ['District','State','National'].includes(sub)
+    ? ['1st Place','2nd Place','3rd Place','Participation']
+    : ['1st Place','2nd Place','3rd Place','4th Place','5th Place'];
+  document.getElementById('addPosition').innerHTML = labels.map((l,i)=>`<option value="${i+1}">${l}</option>`).join('');
 }
 
 function updateAddPoints() {

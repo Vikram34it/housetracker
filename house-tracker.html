@@ -2470,7 +2470,7 @@ function renderFromEntries(container, classEntries) {
     });
   }
 
-  const classes = [...new Set([...Object.keys(classEventData), ...Object.keys(studentAvgs)])].sort((a, b) => {
+  const classes = Object.keys(classEventData).sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
     if(!isNaN(na) && !isNaN(nb)) return na - nb;
     return a.localeCompare(b);

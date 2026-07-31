@@ -2429,18 +2429,50 @@ function renderHouseDetails() {
   renderAcademicSummary();
 }
 
+function computeOverallData(acadEntries) {
+  // Per-house overall avg + tie-aware rank from non-grade academic entries (e.g. TERM-2 OVERALL)
+  const overallData = {};
+  const overallLabels = new Set();
+  (acadEntries || []).forEach(e => {
+    if(gradeOf(e.subCategory) !== null) return;
+    if(!HOUSES.includes(e.house)) return;
+    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
+    if(!m) return;
+    overallData[e.house] = parseFloat(m[1]);
+    if(e.subCategory) overallLabels.add(e.subCategory);
+  });
+  const overallRanked = HOUSES
+    .filter(h => overallData[h] !== undefined)
+    .map(h => ({ house: h, avg: overallData[h] }))
+    .sort((a, b) => b.avg - a.avg);
+  const overallRankMap = {};
+  overallRanked.forEach((h, i) => {
+    if(i > 0 && h.avg === overallRanked[i-1].avg) {
+      overallRankMap[h.house] = overallRankMap[overallRanked[i-1].house];
+    } else {
+      overallRankMap[h.house] = i + 1;
+    }
+  });
+  return {
+    overallData,
+    overallRankMap,
+    hasOverall: overallRanked.length > 0,
+    overallHeader: 'Overall' + (overallLabels.size === 1 ? ` (${[...overallLabels][0]})` : '')
+  };
+}
+
 function renderAcademicSummary() {
   const container = document.getElementById('academicSummaryContainer');
 
   const acadEntries = entries.filter(e => e.category === 'Academics');
   const classEntries = acadEntries.map(e => {
     const g = gradeOf(e.subCategory) || gradeOf(e.event);
-    return {...e, _grade: g !== null ? g : (e.subCategory || e.event || 'Other')};
-  }).filter(e => e._grade !== null);
+    return g !== null ? {...e, _grade: g} : null;
+  }).filter(e => e !== null);
 
-  // 1) Grade-based entries → class + event breakdown
+  // 1) Grade-based entries → class + event breakdown (+ Overall column)
   if(classEntries.length > 0) {
-    renderFromEntries(container, classEntries);
+    renderFromEntries(container, classEntries, acadEntries);
     return;
   }
 
@@ -2459,7 +2491,7 @@ function renderAcademicSummary() {
   container.innerHTML = '';
 }
 
-function renderFromEntries(container, classEntries) {
+function renderFromEntries(container, classEntries, acadEntries) {
   const classEventData = {};
   classEntries.forEach(e => {
     const cls = e._grade;
@@ -2498,6 +2530,18 @@ function renderFromEntries(container, classEntries) {
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
   const acadPoints = CATS.Academics.points;
 
+  const ov = computeOverallData(acadEntries);
+  const renderOverallCell = (h, oi) => {
+    const sep = oi === 0 ? 'border-left:2px solid var(--border);' : '';
+    if(ov.overallData[h] === undefined) return `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`;
+    const rank = ov.overallRankMap[h];
+    const label = rankLabels[rank - 1] || `${rank}th`;
+    return `<td class="house-cell" style="${sep}color:var(--text)">
+      <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${ov.overallData[h].toFixed(1)}</span>
+      <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
+    </td>`;
+  };
+
   const avgOf = (cls, event, house) => {
     const d = classEventData[cls] && classEventData[cls][event] && classEventData[cls][event][house];
     if(d && d.avgCount > 0) return d.avgSum / d.avgCount;
@@ -2512,6 +2556,7 @@ function renderFromEntries(container, classEntries) {
       <thead><tr>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
+        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">${ov.overallHeader}</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2542,6 +2587,7 @@ function renderFromEntries(container, classEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
+      if(ov.hasOverall) HOUSES.forEach((h, oi) => { html += renderOverallCell(h, oi); });
       html += `</tr>`;
       return;
     }
@@ -2583,6 +2629,7 @@ function renderFromEntries(container, classEntries) {
           ${avgHtml}<span style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</span>
         </td>`;
       });
+      if(ov.hasOverall) HOUSES.forEach((h, oi) => { html += renderOverallCell(h, oi); });
       html += `</tr>`;
     });
   });
@@ -2741,31 +2788,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
   const acadPoints = CATS.Academics.points;
 
-  // Overall column: per-house avg from non-grade academic entries (e.g. TERM-2 OVERALL)
-  const overallData = {};
-  const overallLabels = new Set();
-  acadEntries.forEach(e => {
-    if(gradeOf(e.subCategory) !== null) return;
-    if(!HOUSES.includes(e.house)) return;
-    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
-    if(!m) return;
-    overallData[e.house] = parseFloat(m[1]);
-    if(e.subCategory) overallLabels.add(e.subCategory);
-  });
-  const overallRanked = HOUSES
-    .filter(h => overallData[h] !== undefined)
-    .map(h => ({ house: h, avg: overallData[h] }))
-    .sort((a, b) => b.avg - a.avg);
-  const overallRankMap = {};
-  overallRanked.forEach((h, i) => {
-    if(i > 0 && h.avg === overallRanked[i-1].avg) {
-      overallRankMap[h.house] = overallRankMap[overallRanked[i-1].house];
-    } else {
-      overallRankMap[h.house] = i + 1;
-    }
-  });
-  const hasOverall = overallRanked.length > 0;
-  const overallHeader = 'Overall' + (overallLabels.size === 1 ? ` (${[...overallLabels][0]})` : '');
+  const ov = computeOverallData(acadEntries);
 
   let html = `<div class="academic-summary">
     <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
@@ -2774,7 +2797,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       <thead><tr>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
-        ${hasOverall ? `<th style="border-left:2px solid var(--border)">${overallHeader}</th>` : ''}
+        ${ov.hasOverall ? `<th style="border-left:2px solid var(--border)">${ov.overallHeader}</th>` : ''}
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
@@ -2804,14 +2827,14 @@ function renderFromAcadWithStudentData(container, acadEntries) {
           <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
         </td>`;
       });
-      if(hasOverall) {
+      if(ov.hasOverall) {
         HOUSES.forEach((h, oi) => {
           const sep = oi === 0 ? 'border-left:2px solid var(--border);' : '';
-          if(overallData[h] === undefined) { html += `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`; return; }
-          const rank = overallRankMap[h];
+          if(ov.overallData[h] === undefined) { html += `<td class="house-cell" style="${sep}color:var(--muted)">—</td>`; return; }
+          const rank = ov.overallRankMap[h];
           const label = rankLabels[rank - 1] || `${rank}th`;
           html += `<td class="house-cell" style="${sep}color:var(--text)">
-            <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${overallData[h].toFixed(1)}</span>
+            <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${ov.overallData[h].toFixed(1)}</span>
             <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
           </td>`;
         });

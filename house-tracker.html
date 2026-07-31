@@ -2527,7 +2527,7 @@ function renderFromEntries(container, classEntries) {
     });
   }
 
-  const classes = Object.keys(classEventData).sort((a, b) => {
+  const classes = [...new Set([...Object.keys(classEventData), ...Object.keys(studentAvgs)])].sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
     if(!isNaN(na) && !isNaN(nb)) return na - nb;
     return a.localeCompare(b);
@@ -2546,7 +2546,37 @@ function renderFromEntries(container, classEntries) {
       </tr></thead><tbody>`;
 
   classes.forEach(cls => {
-    const events = Object.keys(classEventData[cls]);
+    const events = Object.keys(classEventData[cls] || {});
+
+    if(events.length === 0) {
+      const houseAvgs = HOUSES.map(h => {
+        const d = studentAvgs[cls] && studentAvgs[cls][h];
+        return { house: h, avg: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
+      });
+      houseAvgs.sort((a, b) => b.avg - a.avg);
+      const rankMap = {};
+      houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
+
+      html += `<tr><td class="cls-cell">${cls}</td>`;
+      HOUSES.forEach(h => {
+        const d = studentAvgs[cls] && studentAvgs[cls][h];
+        if(!d || d.count === 0) {
+          html += `<td class="house-cell" style="color:var(--muted)">—</td>`;
+          return;
+        }
+        const rank = rankMap[h];
+        const label = rankLabels[rank] || `${rank+1}th`;
+        const pts = acadPoints[rank] || 0;
+        html += `<td class="house-cell" style="color:var(--text)">
+          <span style="font-weight:800;font-size:1.15rem;color:var(--text)">${houseAvgs[rank].avg}</span>
+          <span style="font-size:0.85rem;font-weight:700;color:var(--text)"> ${label}</span>
+          <span style="font-weight:800;font-size:1rem;color:var(--text)"> ${pts}</span>
+        </td>`;
+      });
+      html += `</tr>`;
+      return;
+    }
+
     events.forEach((event, ei) => {
       const houseData = classEventData[cls][event];
 

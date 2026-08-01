@@ -1506,6 +1506,7 @@
     <span id="saveIndicator" style="font-size:0.7rem;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-primary" onclick="openModal('add')">+ Add Points</button>
     <button class="btn btn-ghost admin-only" onclick="openModal('bulk')">Bulk</button>
+    <button class="btn btn-ghost admin-only" onclick="openImport()">Import</button>
     <button class="btn btn-ghost admin-only" onclick="downloadBackup()" title="Download Backup">Backup</button>
     <label class="btn btn-ghost admin-only" style="cursor:pointer" title="Restore Backup">
       Restore <input type="file" accept=".json" style="display:none" onchange="restoreBackup(event)">
@@ -1787,6 +1788,32 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('bulk')">Cancel</button>
       <button class="btn btn-success" onclick="saveBulk()">Save All</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT EVENT RESULTS MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal" style="max-width:960px">
+    <div class="modal-header">
+      <h2>Import Event Results</h2>
+      <button class="modal-close" onclick="closeImport()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Upload Excel file (columns: Name, Class, Event, Position, Level, House, Points)</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-primary" style="cursor:pointer">Choose Excel File
+            <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(event)">
+          </label>
+          <span id="importFileInfo" style="font-size:0.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+      <div id="importReview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+      <button class="btn btn-success" onclick="saveImport()">Save All Entries</button>
     </div>
   </div>
 </div>
@@ -3755,6 +3782,220 @@ async function saveBulk() {
     render();
     showSaved();
     showToast(`Bulk added points for ${count} houses`,'success');
+  } catch(err) {
+    showToast('Failed to save: ' + err.message, 'error');
+  }
+}
+
+const IMPORT_POSITION_PTS = { 1:10, 2:8, 3:6, 4:4, 5:2, 'Participation':1 };
+const IMPORT_LEVEL_MULT = { 'National':4, 'State':3, 'Regional':2, 'Zonal':2, 'District':2, 'Inter-School':1, 'Intra-School':1, 'School':1, 'Cluster':1 };
+let importRows = [];
+let importCols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
+
+function openImport() {
+  document.getElementById('importModal').classList.add('active');
+  importRows = [];
+  importCols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
+  document.getElementById('importFileInfo').textContent = '';
+  document.getElementById('importReview').innerHTML = '';
+  document.getElementById('importFileInput').value = '';
+}
+
+function closeImport() {
+  document.getElementById('importModal').classList.remove('active');
+}
+
+function detectImportCols(headers) {
+  const cols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
+  headers.forEach((h, i) => {
+    const s = String(h || '').trim().toLowerCase();
+    if(cols.name === -1 && /(^|[.\s])(student|name)/.test(s)) cols.name = i;
+    if(cols.cls === -1 && /^(class|cls)$|grade|class/.test(s)) cols.cls = i;
+    if(cols.event === -1 && /^event|activity|item/.test(s)) cols.event = i;
+    if(cols.position === -1 && /^position|^pos|rank|place/.test(s)) cols.position = i;
+    if(cols.level === -1 && /^level|stage/.test(s)) cols.level = i;
+    if(cols.house === -1 && /^house/.test(s)) cols.house = i;
+    if(cols.points === -1 && /^points|pts|score/.test(s)) cols.points = i;
+  });
+  return cols;
+}
+
+function normalizeImportHouse(v) {
+  const s = String(v || '').replace(/[^A-Za-z]/g, '').trim().toLowerCase();
+  return HOUSES.find(h => h.toLowerCase() === s) || '';
+}
+
+function normalizeImportPosition(v) {
+  const s = String(v || '').trim().toLowerCase();
+  if(/winner|champion|gold|1st|first/.test(s)) return 1;
+  if(/second runner|2nd runner/.test(s)) return 3;
+  if(/2nd|second|silver|runner.?up|consolation/.test(s)) return 2;
+  if(/3rd|third|bronze/.test(s)) return 3;
+  if(/4th|fourth/.test(s)) return 4;
+  if(/5th|fifth/.test(s)) return 5;
+  if(/particip|appearance/.test(s)) return 'Participation';
+  const n = parseInt(s);
+  if(!isNaN(n) && n >= 1 && n <= 5) return n;
+  return null;
+}
+
+function normalizeImportLevel(v) {
+  const s = String(v || '').trim().toLowerCase();
+  if(/national|nationwide/.test(s)) return 'National';
+  if(/state/.test(s)) return 'State';
+  if(/regional/.test(s)) return 'Regional';
+  if(/zonal|zone/.test(s)) return 'Zonal';
+  if(/district/.test(s)) return 'District';
+  if(/inter.?school|interschool/.test(s)) return 'Inter-School';
+  if(/intra|school|cluster/.test(s)) return 'School';
+  return 'School';
+}
+
+function mapImportEvent(event) {
+  const e = String(event || '').trim().toLowerCase();
+  const has = (...kws) => kws.some(k => e.includes(k));
+  if(has('swimming', 'swim')) return { category:'Sports', subCategory:'Swimming' };
+  if(has('cross country', 'marathon', 'crosscountry')) return { category:'Sports', subCategory:'Cross Country' };
+  if(has('athletics', 'run', 'sprint', 'race', 'relay', 'throw', 'shot put', 'javelin', 'discus', 'jump', 'hurdles', 'track')) return { category:'Sports', subCategory:'Athletics' };
+  if(has('chess', 'carrom', 'table tennis', 'badminton', 'yoga', 'gymnastics', 'snooker', 'billiards')) return { category:'Sports', subCategory:'Indoor Games' };
+  if(has('cricket', 'football', 'soccer', 'basketball', 'volleyball', 'hockey', 'kabaddi', 'kho kho', 'kho-kho', 'tennis', 'skating', 'skate', 'handball', 'throwball', 'archery', 'tug of war', 'karate', 'boxing', 'wrestling')) return { category:'Sports', subCategory:'Outdoor Games' };
+  if(has('spell bee', 'spelling')) return { category:'Co-Curricular', subCategory:'Spell Bee' };
+  if(has('quiz')) return { category:'Co-Curricular', subCategory:'Quiz' };
+  if(has('declamation', 'elocution', 'debate', 'speech', 'recitation')) return { category:'Co-Curricular', subCategory:'Declamation' };
+  if(has('drawing', 'painting', 'art', 'craft', 'essay', 'writing', 'singing', 'song', 'dance', 'music', 'talent', 'science', 'model', 'exhibition', 'fancy dress', 'story')) return { category:'Co-Curricular', subCategory:'Talent Tapping' };
+  if(has('ncc', 'nss', 'scouts', 'guides', 'volunteer', 'service', 'blood donation')) return { category:'Unique Contributions', subCategory:'Volunteering' };
+  if(has('best discipline', 'discipline', 'attendance', 'code of conduct', 'conduct')) return { category:'Disciplinary', subCategory:'Best Discipline' };
+  return null;
+}
+
+function computeImportPoints(position, level) {
+  const base = IMPORT_POSITION_PTS[position];
+  if(base == null) return null;
+  return base * (IMPORT_LEVEL_MULT[level] || 1);
+}
+
+function handleImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','csv'].includes(ext)) { showToast('Unsupported file format', 'error'); return; }
+  const info = document.getElementById('importFileInfo');
+  info.textContent = 'Loading ' + file.name + '...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(sheet, { header:1 });
+      if(!data || data.length < 2) { showToast('File has no data rows', 'error'); info.textContent = ''; return; }
+      importCols = detectImportCols(data[0]);
+      buildImportRows(data.slice(1));
+      info.textContent = file.name + ' — ' + importRows.length + ' rows parsed';
+      renderImportReview();
+    } catch(err) {
+      showToast('Failed to read file: ' + err.message, 'error');
+      info.textContent = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildImportRows(rows) {
+  importRows = [];
+  rows.forEach(r => {
+    const name = importCols.name >= 0 ? String(r[importCols.name] || '').trim() : '';
+    const cls = importCols.cls >= 0 ? String(r[importCols.cls] || '').trim() : '';
+    const event = importCols.event >= 0 ? String(r[importCols.event] || '').trim() : '';
+    const posRaw = importCols.position >= 0 ? r[importCols.position] : '';
+    const level = normalizeImportLevel(importCols.level >= 0 ? r[importCols.level] : '');
+    const house = normalizeImportHouse(importCols.house >= 0 ? r[importCols.house] : '');
+    const sheetPts = importCols.points >= 0 ? parseInt(r[importCols.points]) : NaN;
+    const position = normalizeImportPosition(posRaw);
+    const mapped = mapImportEvent(event);
+    const computed = computeImportPoints(position, level);
+    const points = (computed == null ? (isNaN(sheetPts) ? 0 : sheetPts) : computed);
+    if(!name && !event) return;
+    importRows.push({
+      name, cls, event, level, position,
+      house,
+      category: mapped ? mapped.category : '',
+      subCategory: mapped ? mapped.subCategory : '',
+      points,
+      sheetPts: isNaN(sheetPts) ? null : sheetPts
+    });
+  });
+}
+
+function setImportRow(i, field, val) {
+  const r = importRows[i];
+  if(!r) return;
+  if(field === 'house') r.house = val;
+  if(field === 'category') { r.category = val; r.subCategory = (CATS[val]?.subs || [])[0] || ''; }
+  if(field === 'subCategory') r.subCategory = val;
+  if(field === 'points') { const n = parseInt(val); r.points = isNaN(n) ? 0 : n; }
+  renderImportReview();
+}
+
+function renderImportReview() {
+  const wrap = document.getElementById('importReview');
+  if(importRows.length === 0) { wrap.innerHTML = ''; return; }
+  const catKeys = Object.keys(CATS);
+  let html = `<div style="margin-top:16px;overflow:auto;max-height:50vh;border:1px solid var(--border);border-radius:10px">
+    <table style="width:100%;border-collapse:collapse;font-size:0.75rem">
+    <thead><tr style="color:var(--muted)">
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">#</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Name / Class</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Event</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Level</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">House</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Category</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Sub-Category</th>
+      <th style="padding:8px 8px;text-align:center;border-bottom:1px solid var(--border)">Points</th>
+    </tr></thead><tbody>`;
+  importRows.forEach((r, i) => {
+    const houseOpts = ['', ...HOUSES].map(h => `<option value="${h}" ${r.house === h ? 'selected' : ''}>${h || '(none)'}</option>`).join('');
+    const catOpts = catKeys.map(c => `<option value="${c}" ${r.category === c ? 'selected' : ''}>${CAT_LABELS[c] || c}</option>`).join('');
+    const subs = CATS[r.category]?.subs || [];
+    const subOpts = subs.map(s => `<option value="${s}" ${r.subCategory === s ? 'selected' : ''}>${s}</option>`).join('');
+    const ok = r.house && r.category && r.subCategory && r.points > 0;
+    html += `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${i+1}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><div style="font-weight:600">${r.name || '-'}</div>${r.cls ? `<div style="color:var(--muted)">${r.cls}</div>` : ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.event || '-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.level}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:115px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'house',this.value)">${houseOpts}</select></td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:150px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'category',this.value)">${catOpts}</select></td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:135px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'subCategory',this.value)">${subOpts}</select></td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center"><input type="number" class="form-input" style="width:64px;padding:4px 6px;font-size:0.7rem" value="${r.points}" onchange="setImportRow(${i},'points',this.value)"> <span style="font-size:0.7rem;color:${ok ? 'var(--success)' : 'var(--danger)'}">${ok ? '✔' : '⚠'}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  const ready = importRows.filter(r => r.house && r.category && r.subCategory && r.points > 0).length;
+  wrap.innerHTML = html + `<div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">${ready} of ${importRows.length} rows ready to save. Edit any value before saving. Points are auto-computed from Position x Level (National 4x, State 3x, District 2x, School 1x; 1st 10, 2nd 8, 3rd 6, 4th 4, 5th 2, Participation 1).</div>`;
+}
+
+async function saveImport() {
+  const valid = importRows.filter(r => r.house && r.category && r.subCategory && r.points > 0);
+  if(valid.length === 0) { showToast('No valid rows to save', 'error'); return; }
+  const newEntries = valid.map(r => ({
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+    house: r.house,
+    category: r.category,
+    subCategory: r.subCategory,
+    position: typeof r.position === 'number' ? r.position : 0,
+    points: r.points,
+    event: r.event,
+    note: [r.name, r.cls, 'Level: ' + r.level].filter(Boolean).join(' · '),
+    date: new Date().toISOString()
+  }));
+  try {
+    showSaving();
+    await apiPost({ action: 'addEntries', entries: newEntries });
+    entries.push(...newEntries);
+    closeImport();
+    render();
+    showSaved();
+    showToast('Added ' + newEntries.length + ' entries', 'success');
   } catch(err) {
     showToast('Failed to save: ' + err.message, 'error');
   }

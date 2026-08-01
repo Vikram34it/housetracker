@@ -2698,6 +2698,10 @@ function computeAcademicRanking() {
     const exam = e.exam || e.event || 'General';
     if(!(exam in commonLabels)) commonLabels[exam] = label;
   });
+  // The overall entry keeps only the LAST imported exam name, but the label spans every
+  // grade file. When exactly one Common Label exists, apply it to all grade cells.
+  const commonLabelValues = Object.values(commonLabels);
+  const singleCommonLabel = commonLabelValues.length === 1 ? commonLabelValues[0] : null;
 
   // Primary source: academic entries carrying an "Avg:" note (from Excel imports)
   entries.forEach(e => {
@@ -2710,7 +2714,8 @@ function computeAcademicRanking() {
     found = true;
     const exam = e.event || 'General';
     const key = g + '|' + exam;
-    if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: commonLabels[exam] || null, houses: {} };
+    const cl = commonLabels[exam] || singleCommonLabel;
+    if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
     if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
     const d = cells[key].houses[e.house];
     d.avgSum += parseFloat(m[1]);
@@ -2726,7 +2731,8 @@ function computeAcademicRanking() {
       found = true;
       const exam = s.exam || 'General';
       const key = g + '|' + exam;
-      if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: commonLabels[exam] || null, houses: {} };
+      const cl = commonLabels[exam] || singleCommonLabel;
+      if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
       if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       const d = cells[key].houses[s.house];
       d.avgSum += s.total || 0;

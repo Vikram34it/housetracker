@@ -1641,23 +1641,10 @@
     <div id="academicSummaryContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
-        <div class="section-title">House-wise Event Summary</div>
+        <div class="section-title">Comparative Event Summary</div>
         <button class="btn btn-ghost btn-sm" onclick="printHouseEvents()">🖨️ Print</button>
       </div>
-      <div style="overflow-x:auto">
-        <table class="comparison-table" id="houseEventsTable">
-          <thead>
-            <tr>
-              <th>House</th>
-              <th>Category</th>
-              <th>Event</th>
-              <th>Date</th>
-              <th style="text-align:right">Points</th>
-            </tr>
-          </thead>
-          <tbody id="houseEventsBody"></tbody>
-        </table>
-      </div>
+      <div style="overflow-x:auto" id="houseEventsTableContainer"></div>
     </div>
   </div>
 
@@ -2548,49 +2535,84 @@ function renderHouseDetails() {
 }
 
 function renderHouseEventsTable() {
-  const body = document.getElementById('houseEventsBody');
-  if (!body) return;
+  const container = document.getElementById('houseEventsTableContainer');
+  if (!container) return;
 
-  const withEntries = getSorted().filter(h => entries.some(e => e.house === h.house));
-  if (withEntries.length === 0) {
-    body.innerHTML = `<tr><td colspan="5"><div class="monthly-empty"><div class="monthly-empty-icon">📋</div><div style="font-weight:700;margin-bottom:4px">No events yet</div><div style="color:var(--muted)">Add points to see the house-wise event summary</div></div></td></tr>`;
+  const houses = getSorted().filter(h => entries.some(e => e.house === h.house)).map(h => h.house);
+  if (houses.length === 0) {
+    container.innerHTML = `<div class="monthly-empty"><div class="monthly-empty-icon">📋</div><div style="font-weight:700;margin-bottom:4px">No events yet</div><div style="color:var(--muted)">Add points to see the comparative event summary</div></div>`;
     return;
   }
 
-  const dateFmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  let html = '';
-  let grandTotal = 0;
-
-  withEntries.forEach(h => {
-    const houseEntries = entries
-      .filter(e => e.house === h.house)
-      .sort((a, b) => new Date(a.date) - new Date(b.date) || String(a.category).localeCompare(String(b.category)));
-    const total = houseEntries.reduce((s, e) => s + e.points, 0);
-    grandTotal += total;
-
-    houseEntries.forEach((e, i) => {
-      const catColor = CATS[e.category]?.color || 'var(--muted)';
-      html += `<tr${i === 0 ? ` style="border-top:2px solid ${HCOLOR[h.house]}"` : ''}>
-        <td>${i === 0 ? `<span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span>` : ''}</td>
-        <td><span style="color:${catColor};font-weight:600">${CAT_LABELS[e.category] || e.category}</span>${e.subCategory ? ` <span style="color:var(--muted);font-weight:400">· ${e.subCategory}</span>` : ''}</td>
-        <td>${e.event || '-'}</td>
-        <td style="white-space:nowrap;color:var(--muted)">${dateFmt(e.date)}</td>
-        <td class="cell-total" style="text-align:right;color:${e.points >= 0 ? 'var(--success)' : 'var(--danger)'}">${e.points >= 0 ? '+' : ''}${e.points}</td>
-      </tr>`;
-    });
-
-    html += `<tr style="background:var(--card2)">
-      <td colspan="4" style="text-align:right;font-weight:800;color:${HCOLOR[h.house]}">${h.house} Total</td>
-      <td class="cell-total" style="text-align:right;font-weight:800;color:${HCOLOR[h.house]}">${total}</td>
-    </tr>`;
+  // Group entries by category + subCategory + event
+  const groups = new Map();
+  entries.forEach(e => {
+    const key = [e.category || '', e.subCategory || '', e.event || ''].join('|');
+    if (!groups.has(key)) groups.set(key, { category: e.category, subCategory: e.subCategory, event: e.event || '', items: [] });
+    groups.get(key).items.push(e);
   });
 
-  html += `<tr style="background:var(--card2);border-top:2px solid var(--border)">
-    <td colspan="4" style="text-align:right;font-weight:800">Grand Total</td>
-    <td class="cell-total" style="text-align:right;font-weight:800">${grandTotal}</td>
-  </tr>`;
+  const catOrder = Object.keys(CATS);
+  const rows = [...groups.values()].sort((a, b) => {
+    const ci = catOrder.indexOf(a.category) - catOrder.indexOf(b.category);
+    if (ci !== 0) return ci;
+    return String(a.subCategory || '').localeCompare(String(b.subCategory || '')) || String(a.event).localeCompare(String(b.event));
+  });
 
-  body.innerHTML = html;
+  const pt = (house, items) => items.filter(e => e.house === house).reduce((s, e) => s + e.points, 0);
+
+  let html = `<table class="comparison-table" id="houseEventsTable">
+    <thead><tr>
+      <th>Category</th>
+      <th>Event</th>
+      ${houses.map(h => `<th style="text-align:center;color:${HCOLOR[h]}">${h}</th>`).join('')}
+      <th style="text-align:right">Total</th>
+    </tr></thead><tbody>`;
+
+  const grand = {}; let grandTotal = 0;
+  const cat = {}; let catTotal = 0;
+  houses.forEach(h => { grand[h] = 0; cat[h] = 0; });
+  let prevCat = null;
+
+  const closeCat = () => {
+    if (prevCat === null) return;
+    html += `<tr style="background:var(--card2)">
+      <td colspan="2" style="text-align:right;font-weight:800;color:var(--accent)">${CAT_LABELS[prevCat] || prevCat} Subtotal</td>
+      ${houses.map(h => `<td style="text-align:center;font-weight:700;color:${HCOLOR[h]}">${cat[h]}</td>`).join('')}
+      <td class="cell-total" style="text-align:right;font-weight:700">${catTotal}</td>
+    </tr>`;
+    houses.forEach(h => cat[h] = 0);
+    catTotal = 0;
+  };
+
+  rows.forEach(r => {
+    if (r.category !== prevCat) { closeCat(); prevCat = r.category; }
+    const houseVals = houses.map(h => pt(h, r.items));
+    const rowTotal = houseVals.reduce((s, v) => s + v, 0);
+    houses.forEach((h, i) => { grand[h] += houseVals[i]; cat[h] += houseVals[i]; });
+    grandTotal += rowTotal;
+    catTotal += rowTotal;
+
+    const catColor = CATS[r.category]?.color || 'var(--muted)';
+    html += `<tr>
+      <td><span style="color:${catColor};font-weight:600">${CAT_LABELS[r.category] || r.category}</span>${r.subCategory ? ` <span style="color:var(--muted);font-weight:400">· ${r.subCategory}</span>` : ''}</td>
+      <td style="font-weight:600">${r.event || '-'}</td>
+      ${houses.map((h, i) => {
+        const v = houseVals[i];
+        return `<td style="text-align:center;color:${v < 0 ? 'var(--danger)' : v > 0 ? 'var(--text)' : 'var(--muted)'};font-weight:${v !== 0 ? '700' : '400'}">${v !== 0 ? (v > 0 ? '+' : '') + v : '–'}</td>`;
+      }).join('')}
+      <td class="cell-total" style="text-align:right">${rowTotal}</td>
+    </tr>`;
+  });
+  closeCat();
+
+  html += `<tr style="background:var(--card2);border-top:2px solid var(--border)">
+    <td colspan="2" style="text-align:right;font-weight:800">Grand Total</td>
+    ${houses.map(h => `<td class="cell-total" style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${grand[h]}</td>`).join('')}
+    <td class="cell-total" style="text-align:right;font-weight:800">${grandTotal}</td>
+  </tr></tbody></table>`;
+
+  container.innerHTML = html;
 }
 
 function printHouseEvents() {

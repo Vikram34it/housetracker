@@ -2546,15 +2546,16 @@ function renderHouseEventsTable() {
   const container = document.getElementById('houseEventsTableContainer');
   if (!container) return;
 
-  const houses = getSorted().filter(h => entries.some(e => e.house === h.house)).map(h => h.house);
+  const houses = getSorted().filter(h => entries.some(e => e.house === h.house) || getAcadPoints(h.house) !== 0).map(h => h.house);
   if (houses.length === 0) {
     container.innerHTML = `<div class="monthly-empty"><div class="monthly-empty-icon">📋</div><div style="font-weight:700;margin-bottom:4px">No events yet</div><div style="color:var(--muted)">Add points to see the comparative event summary</div></div>`;
     return;
   }
 
-  // Group entries by category + subCategory + event
+  // Group entries by category + subCategory + event (Academics handled separately via final points)
   const groups = new Map();
   entries.forEach(e => {
+    if (e.category === 'Academics') return;
     const key = [e.category || '', e.subCategory || '', e.event || ''].join('|');
     if (!groups.has(key)) groups.set(key, { category: e.category, subCategory: e.subCategory, event: e.event || '', items: [] });
     groups.get(key).items.push(e);
@@ -2566,6 +2567,16 @@ function renderHouseEventsTable() {
     if (ci !== 0) return ci;
     return String(a.subCategory || '').localeCompare(String(b.subCategory || '')) || String(a.event).localeCompare(String(b.event));
   });
+
+  // Academics final overall points row (replaces grade-wise academic entries in the summary)
+  const acadRow = {
+    category: 'Academics',
+    subCategory: '',
+    event: 'Final Overall',
+    items: [],
+    houseVals: houses.map(h => getAcadPoints(h))
+  };
+  rows.unshift(acadRow);
 
   const pt = (house, items) => items.filter(e => e.house === house).reduce((s, e) => s + e.points, 0);
 
@@ -2595,21 +2606,22 @@ function renderHouseEventsTable() {
 
   rows.forEach(r => {
     if (r.category !== prevCat) { closeCat(); prevCat = r.category; }
-    const houseVals = houses.map(h => pt(h, r.items));
+    const houseVals = r.houseVals || houses.map(h => pt(h, r.items));
     const rowTotal = houseVals.reduce((s, v) => s + v, 0);
     houses.forEach((h, i) => { grand[h] += houseVals[i]; cat[h] += houseVals[i]; });
     grandTotal += rowTotal;
     catTotal += rowTotal;
 
     const catColor = CATS[r.category]?.color || 'var(--muted)';
-    html += `<tr>
+    const isFinalAcad = r.event === 'Final Overall';
+    html += `<tr${isFinalAcad ? ' style="border-top:2px solid var(--border);background:rgba(56,189,248,0.05)"' : ''}>
       <td><span style="color:${catColor};font-weight:600">${CAT_LABELS[r.category] || r.category}</span>${r.subCategory ? ` <span style="color:var(--muted);font-weight:400">· ${r.subCategory}</span>` : ''}</td>
-      <td style="font-weight:600">${r.event || '-'}</td>
+      <td style="font-weight:${isFinalAcad ? '800' : '600'}">${r.event || '-'}</td>
       ${houses.map((h, i) => {
         const v = houseVals[i];
         return `<td style="text-align:center;color:${v < 0 ? 'var(--danger)' : v > 0 ? 'var(--text)' : 'var(--muted)'};font-weight:${v !== 0 ? '700' : '400'}">${v !== 0 ? (v > 0 ? '+' : '') + v : '–'}</td>`;
       }).join('')}
-      <td class="cell-total" style="text-align:right">${rowTotal}</td>
+      <td class="cell-total" style="text-align:right;font-weight:${isFinalAcad ? '800' : ''}">${rowTotal}</td>
     </tr>`;
   });
   closeCat();
@@ -2768,60 +2780,49 @@ function getAcadPoints(h) {
 function renderAcademicRankingTable(container, ranking) {
   const { cells, cumulative, finalRank, finalPoints } = ranking;
 
+  // Group cells by common label (the common event/exam that spans all grades)
+  const labelGroups = new Map();
+  cells.forEach(cell => {
+    const label = cell.exam || 'General';
+    if(!labelGroups.has(label)) labelGroups.set(label, []);
+    labelGroups.get(label).push(cell);
+  });
+
   let html = `<div class="academic-summary">
     <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
     <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        <th>Exam</th>
+        <th>Common Label</th>
+        <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
         <th style="text-align:right">Total</th>
       </tr></thead><tbody>`;
 
-  const gradeTotals = {};
-  HOUSES.forEach(h => gradeTotals[h] = 0);
-  let gradeTotal = 0;
-  let prevGrade = null;
-
-  const closeGrade = () => {
-    if(prevGrade === null) return;
-    html += `<tr style="background:var(--card2)">
-      <td style="text-align:right;font-weight:800;color:var(--accent)">Grade ${prevGrade} Subtotal</td>
-      ${HOUSES.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR_DARK[h]}">${gradeTotals[h]}</td>`).join('')}
-      <td style="text-align:right;font-weight:800;color:var(--accent)">${gradeTotal}</td>
-    </tr>`;
-    HOUSES.forEach(h => gradeTotals[h] = 0);
-    gradeTotal = 0;
-  };
-
-  cells.forEach(cell => {
-    if(cell.grade !== prevGrade) {
-      closeGrade();
-      prevGrade = cell.grade;
-      html += `<tr><td colspan="${HOUSES.length + 2}" style="font-weight:800;padding:12px 16px;background:var(--card);color:var(--accent);border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Grade ${cell.grade}</td></tr>`;
-    }
-    const rowTotal = HOUSES.reduce((s, h) => s + cell.houseData[h].pts, 0);
-    html += `<tr>
-      <td style="font-weight:700">${cell.exam}</td>
-      ${HOUSES.map(h => {
-        const v = cell.houseData[h];
-        if(v.avg === null) return `<td style="text-align:center;color:var(--muted)">—</td>`;
-        return `<td style="text-align:center">
-          <span style="font-weight:800;font-size:1.1rem;color:${HCOLOR_DARK[h]}">${v.pts}</span>
-          <span style="font-size:0.75rem;font-weight:700;color:var(--muted)"> · ${v.rankLabel}</span>
-        </td>`;
-      }).join('')}
-      <td style="text-align:right;font-weight:700">${rowTotal}</td>
-    </tr>`;
-    HOUSES.forEach(h => gradeTotals[h] += cell.houseData[h].pts);
-    gradeTotal += rowTotal;
+  [...labelGroups.keys()].sort().forEach(label => {
+    const group = labelGroups.get(label).sort((a, b) => a.grade - b.grade);
+    group.forEach((cell, gi) => {
+      const rowTotal = HOUSES.reduce((s, h) => s + cell.houseData[h].pts, 0);
+      html += `<tr>
+        ${gi === 0 ? `<td style="font-weight:800" rowspan="${group.length}">${label}</td>` : ''}
+        <td style="text-align:center">Grade ${cell.grade}</td>
+        ${HOUSES.map(h => {
+          const v = cell.houseData[h];
+          if(v.avg === null) return `<td style="text-align:center;color:var(--muted)">—</td>`;
+          return `<td style="text-align:center">
+            <span style="font-weight:800;font-size:1.1rem;color:${HCOLOR_DARK[h]}">${v.pts}</span>
+            <span style="font-size:0.75rem;font-weight:700;color:var(--muted)"> · ${v.rankLabel}</span>
+          </td>`;
+        }).join('')}
+        <td style="text-align:right;font-weight:700">${rowTotal}</td>
+      </tr>`;
+    });
   });
-  closeGrade();
 
   // Overall cumulative
   const grand = HOUSES.reduce((s, h) => s + cumulative[h], 0);
   html += `<tr style="background:var(--card2)">
-    <td style="text-align:right;font-weight:800">Overall Cumulative</td>
+    <td colspan="2" style="text-align:right;font-weight:800">Overall Cumulative</td>
     ${HOUSES.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR_DARK[h]}">${cumulative[h]}</td>`).join('')}
     <td style="text-align:right;font-weight:800">${grand}</td>
   </tr>`;
@@ -2829,7 +2830,7 @@ function renderAcademicRankingTable(container, ranking) {
   // Final position & points
   const finalSum = HOUSES.reduce((s, h) => s + finalPoints[h], 0);
   html += `<tr style="background:var(--card2);border-top:2px solid var(--border)">
-    <td style="text-align:right;font-weight:800">Final Position (overall)</td>
+    <td colspan="2" style="text-align:right;font-weight:800">Final Position (overall)</td>
     ${HOUSES.map(h => {
       const r = finalRank[h];
       const ord = r === 1 ? 'st' : r === 2 ? 'nd' : r === 3 ? 'rd' : 'th';

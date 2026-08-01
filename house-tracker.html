@@ -2520,6 +2520,7 @@ function renderHouseDetails() {
   const sorted = getSorted();
   const maxPts = Math.max(...sorted.map(s=>s.total),1);
   const cats = Object.keys(CATS);
+  const rankPts = getCategoryRankPoints();
 
   document.getElementById('houseDetails').innerHTML = sorted.map((h) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
@@ -2539,6 +2540,15 @@ function renderHouseDetails() {
         </div>`;
     }).join('');
 
+    const ptsRows = cats.map(c => {
+      const v = rankPts.ranked[c] ? (rankPts.ranked[c][h.house] || 0) : 0;
+      return `<tr>
+        <td style="padding:3px 8px;font-size:0.75rem;color:var(--text)">${CAT_LABELS[c] || c}</td>
+        <td style="padding:3px 8px;font-size:0.75rem;font-weight:800;text-align:right;color:${HCOLOR[h.house]}">${v}</td>
+      </tr>`;
+    }).join('');
+    const ptsTotal = cats.reduce((s, c) => s + ((rankPts.ranked[c] && rankPts.ranked[c][h.house]) || 0), 0);
+
     return `
       <div class="house-detail-card" style="border-top:3px solid ${HCOLOR[h.house]}">
         <div class="house-detail-header">
@@ -2547,6 +2557,16 @@ function renderHouseDetails() {
         </div>
         <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
         <div class="category-bars">${bars}</div>
+        <div style="margin-top:12px;font-size:0.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Category Points</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:4px">
+          <tbody>
+            ${ptsRows}
+            <tr style="border-top:1px solid var(--border)">
+              <td style="padding:3px 8px;font-size:0.78rem;font-weight:800">Total</td>
+              <td style="padding:3px 8px;font-size:0.78rem;font-weight:800;text-align:right;color:${HCOLOR[h.house]}">${ptsTotal}</td>
+            </tr>
+          </tbody>
+        </table>
         ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
   }).join('');
@@ -2853,6 +2873,30 @@ function getAcadCumulative(h) {
   const r = computeAcademicRanking();
   if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
   return r.cumulative[h] || 0;
+}
+
+// Per-category re-ranked points (matching the Comparative Event Summary subtotals):
+// raw subtotal per house is ranked 1st-5th, then CATEGORY_PTS are assigned.
+function getCategoryRankPoints() {
+  const houses = HOUSES.filter(h => entries.some(e => e.house === h) || getAcadPoints(h) !== 0);
+  const raw = {};
+  Object.keys(CATS).forEach(cat => { raw[cat] = {}; houses.forEach(h => raw[cat][h] = 0); });
+  entries.forEach(e => {
+    if(e.category === 'Academics') return;
+    if(raw[e.category] && raw[e.category][e.house] !== undefined) raw[e.category][e.house] += e.points || 0;
+  });
+  const ranked = {};
+  Object.keys(CATS).forEach(cat => {
+    const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
+    if(cat === 'Academics') houses.forEach(h => raw[cat][h] = getAcadCumulative(h));
+    const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
+      .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
+    const rankMap = {};
+    order.forEach((x, i) => rankMap[x.house] = i);
+    ranked[cat] = {};
+    houses.forEach(h => ranked[cat][h] = scale[rankMap[h]] || 0);
+  });
+  return { houses, ranked };
 }
 
 function renderAcademicRankingTable(container, ranking) {

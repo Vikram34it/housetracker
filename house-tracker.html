@@ -2518,9 +2518,10 @@ function renderDashboard() {
 
 function renderHouseDetails() {
   const sorted = getSorted();
-  const maxPts = Math.max(...sorted.map(s=>s.total),1);
   const cats = Object.keys(CATS);
   const rankPts = getCategoryRankPoints();
+  const ptsFor = (house) => cats.reduce((s, c) => s + ((rankPts.ranked[c] && rankPts.ranked[c][house]) || 0), 0);
+  const maxPts = Math.max(...sorted.map(s => ptsFor(s.house)), 1);
 
   document.getElementById('houseDetails').innerHTML = sorted.map((h) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
@@ -2528,7 +2529,7 @@ function renderHouseDetails() {
     const badge = rankLabels[h.rank-1] || '#' + h.rank;
     const rc = rankColors[h.rank-1] || 'rgba(148,163,184,0.15);color:#64748b';
     const bars = cats.map(c => {
-      const v = getCatTotal(h.house,c);
+      const v = (rankPts.ranked[c] && rankPts.ranked[c][h.house]) || 0;
       const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;
       return `
         <div class="cat-bar-row">
@@ -2539,15 +2540,7 @@ function renderHouseDetails() {
           <div class="cat-bar-value">${v}</div>
         </div>`;
     }).join('');
-
-    const ptsRows = cats.map(c => {
-      const v = rankPts.ranked[c] ? (rankPts.ranked[c][h.house] || 0) : 0;
-      return `<tr>
-        <td style="padding:3px 8px;font-size:0.75rem;color:var(--text)">${CAT_LABELS[c] || c}</td>
-        <td style="padding:3px 8px;font-size:0.75rem;font-weight:800;text-align:right;color:${HCOLOR[h.house]}">${v}</td>
-      </tr>`;
-    }).join('');
-    const ptsTotal = cats.reduce((s, c) => s + ((rankPts.ranked[c] && rankPts.ranked[c][h.house]) || 0), 0);
+    const ptsTotal = ptsFor(h.house);
 
     return `
       <div class="house-detail-card" style="border-top:3px solid ${HCOLOR[h.house]}">
@@ -2555,18 +2548,8 @@ function renderHouseDetails() {
           <div class="house-detail-name" style="color:${HCOLOR[h.house]}">${h.house}</div>
           <div class="house-detail-rank ${h.rank <= 3 ? 'is-medal' : ''}" style="background:${rc.split(';')[0]};${rc.split(';')[1]}">${badge}</div>
         </div>
-        <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
+        <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${ptsTotal}</div>
         <div class="category-bars">${bars}</div>
-        <div style="margin-top:12px;font-size:0.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Category Points</div>
-        <table style="width:100%;border-collapse:collapse;margin-top:4px">
-          <tbody>
-            ${ptsRows}
-            <tr style="border-top:1px solid var(--border)">
-              <td style="padding:3px 8px;font-size:0.78rem;font-weight:800">Total</td>
-              <td style="padding:3px 8px;font-size:0.78rem;font-weight:800;text-align:right;color:${HCOLOR[h.house]}">${ptsTotal}</td>
-            </tr>
-          </tbody>
-        </table>
         ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
   }).join('');

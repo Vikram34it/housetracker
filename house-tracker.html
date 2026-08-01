@@ -2858,12 +2858,14 @@ function computeCategoryRankPoints() {
   Object.keys(CATS).forEach(cat => {
     const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
     if(cat === 'Academics') houses.forEach(h => raw[cat][h] = getAcadCumulative(h));
+    // Empty category (no house has any points) → award nothing, matching the summary (no subtotal row)
+    const allZero = houses.every(h => !raw[cat][h]);
     const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
       .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
     const rankMap = {};
     order.forEach((x, i) => rankMap[x.house] = i);
     ranked[cat] = {};
-    houses.forEach(h => ranked[cat][h] = scale[rankMap[h]] || 0);
+    houses.forEach(h => ranked[cat][h] = allZero ? 0 : (scale[rankMap[h]] || 0));
   });
   categoryRankCache = { houses, ranked, raw };
   return categoryRankCache;

@@ -2441,6 +2441,7 @@ function calcPoints(cat,sub,pos) {
 // ===== RENDER FUNCTIONS =====
 function render() {
   acadRankingCache = null;
+  categoryRankCache = null;
   renderDashboard();
   renderHouseDetails();
   renderHouseEventsTable();
@@ -2591,25 +2592,22 @@ function renderHouseEventsTable() {
     </tr></thead><tbody>`;
 
   const grand = {}; let grandTotal = 0;
-  const cat = {}; let catTotal = 0;
-  houses.forEach(h => { grand[h] = 0; cat[h] = 0; });
+  houses.forEach(h => { grand[h] = 0; });
   let prevCat = null;
 
   const closeCat = () => {
     if (prevCat === null) return;
-    // Re-rank the houses by this category's raw subtotal and assign category points (1st-5th)
+    // Read this category's re-ranked points from the shared Comparative Event Summary computation
+    const cr = computeCategoryRankPoints();
+    const assigned = cr.ranked[prevCat] || {};
+    const raw = cr.raw[prevCat] || {};
     const scale = CATEGORY_PTS[prevCat] || CATS[prevCat]?.points || [];
-    const ranked = houses.map(h => ({ house: h, total: cat[h] }))
-      .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
-    const rankMap = {};
-    ranked.forEach((x, i) => rankMap[x.house] = i);
-    const assigned = {};
     let assignedTotal = 0;
-    houses.forEach(h => { assigned[h] = scale[rankMap[h]] || 0; assignedTotal += assigned[h]; });
+    houses.forEach(h => assignedTotal += assigned[h] || 0);
 
     html += `<tr style="background:var(--card2)">
       <td colspan="2" style="text-align:right;font-weight:800;color:var(--accent)">${CAT_LABELS[prevCat] || prevCat} Subtotal</td>
-      ${houses.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${assigned[h]}<span style="font-size:0.68rem;font-weight:400;color:var(--muted)"> / ${cat[h]}</span></td>`).join('')}
+      ${houses.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${assigned[h] || 0}<span style="font-size:0.68rem;font-weight:400;color:var(--muted)"> / ${raw[h] || 0}</span></td>`).join('')}
       <td class="cell-total" style="text-align:right;font-weight:700">${assignedTotal}</td>
     </tr>`;
     if (scale.length > 0) {
@@ -2618,17 +2616,14 @@ function renderHouseEventsTable() {
         <td colspan="${houses.length + 1}" style="font-weight:700">${scale.join(', ')}</td>
       </tr>`;
     }
-    houses.forEach(h => { grand[h] += assigned[h]; cat[h] = 0; });
+    houses.forEach(h => { grand[h] += assigned[h] || 0; });
     grandTotal += assignedTotal;
-    catTotal = 0;
   };
 
   rows.forEach(r => {
     if (r.category !== prevCat) { closeCat(); prevCat = r.category; }
     const houseVals = r.houseVals || houses.map(h => pt(h, r.items));
     const rowTotal = houseVals.reduce((s, v) => s + v, 0);
-    houses.forEach((h, i) => { cat[h] += houseVals[i]; });
-    catTotal += rowTotal;
 
     const catColor = CATS[r.category]?.color || 'var(--muted)';
     const isFinalAcad = r.event === 'Overall Cumulative';
@@ -2846,10 +2841,12 @@ function getAcadCumulative(h) {
   return r.cumulative[h] || 0;
 }
 
-// Per-category re-ranked points (matching the Comparative Event Summary subtotals):
-// raw subtotal per house is ranked 1st-5th, then CATEGORY_PTS are assigned.
-// Uses the same house order as the summary table so tied subtotals resolve identically.
-function getCategoryRankPoints() {
+// SINGLE SOURCE OF TRUTH for the Comparative Event Summary subtotals:
+// each category's raw subtotal per house is re-ranked 1st-5th, then CATEGORY_PTS are assigned.
+// The Comparative Event Summary table, Dashboard and House Details cards all read this same result.
+let categoryRankCache = null;
+function computeCategoryRankPoints() {
+  if (categoryRankCache) return categoryRankCache;
   const houses = getSorted().filter(h => entries.some(e => e.house === h.house) || getAcadPoints(h.house) !== 0).map(h => h.house);
   const raw = {};
   Object.keys(CATS).forEach(cat => { raw[cat] = {}; houses.forEach(h => raw[cat][h] = 0); });
@@ -2868,13 +2865,14 @@ function getCategoryRankPoints() {
     ranked[cat] = {};
     houses.forEach(h => ranked[cat][h] = scale[rankMap[h]] || 0);
   });
-  return { houses, ranked };
+  categoryRankCache = { houses, ranked, raw };
+  return categoryRankCache;
 }
 
 // Standings built from the Comparative Event Summary's re-ranked category points.
 // Total = sum of the per-category ranked points; used by the Dashboard and House Details cards.
 function getCategoryRankedStandings() {
-  const rp = getCategoryRankPoints();
+  const rp = computeCategoryRankPoints();
   const cats = Object.keys(CATS);
   const arr = rp.houses.map(house => {
     const byCat = {};

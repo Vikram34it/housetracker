@@ -2688,6 +2688,17 @@ function computeAcademicRanking() {
   const cells = {};
   let found = false;
 
+  // Common Label from Excel import: stored on non-grade academic entries as subCategory
+  const commonLabels = {};
+  entries.forEach(e => {
+    if(e.category !== 'Academics') return;
+    if(gradeOf(e.subCategory) !== null) return;
+    const label = String(e.subCategory || '').trim();
+    if(!label) return;
+    const exam = e.exam || e.event || 'General';
+    if(!(exam in commonLabels)) commonLabels[exam] = label;
+  });
+
   // Primary source: academic entries carrying an "Avg:" note (from Excel imports)
   entries.forEach(e => {
     if(e.category !== 'Academics') return;
@@ -2697,8 +2708,9 @@ function computeAcademicRanking() {
     const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
     if(!m) return;
     found = true;
-    const key = g + '|' + (e.event || 'General');
-    if(!cells[key]) cells[key] = { grade: g, exam: e.event || 'General', houses: {} };
+    const exam = e.event || 'General';
+    const key = g + '|' + exam;
+    if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: commonLabels[exam] || null, houses: {} };
     if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
     const d = cells[key].houses[e.house];
     d.avgSum += parseFloat(m[1]);
@@ -2712,8 +2724,9 @@ function computeAcademicRanking() {
       if(g === null) return;
       if(!HOUSES.includes(s.house)) return;
       found = true;
-      const key = g + '|' + (s.exam || 'General');
-      if(!cells[key]) cells[key] = { grade: g, exam: s.exam || 'General', houses: {} };
+      const exam = s.exam || 'General';
+      const key = g + '|' + exam;
+      if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: commonLabels[exam] || null, houses: {} };
       if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       const d = cells[key].houses[s.house];
       d.avgSum += s.total || 0;
@@ -2780,10 +2793,11 @@ function getAcadPoints(h) {
 function renderAcademicRankingTable(container, ranking) {
   const { cells, cumulative, finalRank, finalPoints } = ranking;
 
-  // Group cells by common label (the common event/exam that spans all grades)
+  // Group cells by common label (from Excel import's Common Label field);
+  // fall back to exam name when no common label was provided for that exam
   const labelGroups = new Map();
   cells.forEach(cell => {
-    const label = cell.exam || 'General';
+    const label = cell.commonLabel || cell.exam || 'General';
     if(!labelGroups.has(label)) labelGroups.set(label, []);
     labelGroups.get(label).push(cell);
   });

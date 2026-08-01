@@ -2683,6 +2683,32 @@ function computeOverallData(acadEntries) {
 // Cumulative points across all grades/exams decide the final overall position → final points.
 let acadRankingCache = null;
 
+// Derive the Common Label from an exam name by stripping a leading grade prefix,
+// e.g. "GRADE-6 TERM-2" -> "TERM-2", "GRADE-10 BOARD EXAM" -> "BOARD EXAM", "XII PT-1" -> "PT-1".
+function deriveCommonLabel(exam, grade) {
+  if(exam == null || grade == null) return null;
+  const s = String(exam).trim();
+  if(!s) return null;
+  const roman = { 6:'VI', 7:'VII', 8:'VIII', 9:'IX', 10:'X', 11:'XI', 12:'XII' };
+  const forms = [String(grade), roman[grade] || ''];
+  for(const f of forms) {
+    if(!f) continue;
+    const re = new RegExp('^(?:grade|class|std|standard)\\s*[-:]?\\s*' + f + '\\s*[-:–]?\\s*', 'i');
+    if(re.test(s)) {
+      const out = s.replace(re, '').trim();
+      return out || null;
+    }
+    if(/^[XIV]+$/.test(f) && f.length >= 2) {
+      const reRoman = new RegExp('^' + f + '\\s*[-:–]?\\s*', 'i');
+      if(reRoman.test(s)) {
+        const out = s.replace(reRoman, '').trim();
+        return out || null;
+      }
+    }
+  }
+  return null;
+}
+
 function computeAcademicRanking() {
   if(acadRankingCache) return acadRankingCache;
   const acadPts = CATS.Academics.points;
@@ -2715,7 +2741,7 @@ function computeAcademicRanking() {
     found = true;
     const exam = e.event || 'General';
     const key = g + '|' + exam;
-    const cl = commonLabels[exam] || singleCommonLabel;
+    const cl = commonLabels[exam] || singleCommonLabel || deriveCommonLabel(exam, g);
     if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
     if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
     const d = cells[key].houses[e.house];
@@ -2732,7 +2758,7 @@ function computeAcademicRanking() {
       found = true;
       const exam = s.exam || 'General';
       const key = g + '|' + exam;
-      const cl = commonLabels[exam] || singleCommonLabel;
+      const cl = commonLabels[exam] || singleCommonLabel || deriveCommonLabel(exam, g);
       if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
       if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       const d = cells[key].houses[s.house];

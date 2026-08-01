@@ -3946,6 +3946,7 @@ function renderImportReview() {
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">#</th>
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Name / Class</th>
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Event</th>
+      <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Position</th>
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Level</th>
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">House</th>
       <th style="padding:8px 8px;text-align:left;border-bottom:1px solid var(--border)">Category</th>
@@ -3962,6 +3963,7 @@ function renderImportReview() {
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${i+1}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><div style="font-weight:600">${r.name || '-'}</div>${r.cls ? `<div style="color:var(--muted)">${r.cls}</div>` : ''}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.event || '-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${typeof r.position === 'number' ? ['1st','2nd','3rd','4th','5th'][r.position-1] : r.position || '-'}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.level}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:115px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'house',this.value)">${houseOpts}</select></td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:150px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'category',this.value)">${catOpts}</select></td>

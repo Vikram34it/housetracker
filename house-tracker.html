@@ -1638,7 +1638,6 @@
       <div class="section-title">House Details</div>
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
-    <div id="acadDebugLine" style="background:#fff3cd;color:#664d00;padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px;white-space:pre-wrap"></div>
     <div id="academicSummaryContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
@@ -2860,8 +2859,9 @@ function getAcadCumulative(h) {
 
 // Per-category re-ranked points (matching the Comparative Event Summary subtotals):
 // raw subtotal per house is ranked 1st-5th, then CATEGORY_PTS are assigned.
+// Uses the same house order as the summary table so tied subtotals resolve identically.
 function getCategoryRankPoints() {
-  const houses = HOUSES.filter(h => entries.some(e => e.house === h) || getAcadPoints(h) !== 0);
+  const houses = getSorted().filter(h => entries.some(e => e.house === h.house) || getAcadPoints(h.house) !== 0).map(h => h.house);
   const raw = {};
   Object.keys(CATS).forEach(cat => { raw[cat] = {}; houses.forEach(h => raw[cat][h] = 0); });
   entries.forEach(e => {
@@ -2958,27 +2958,13 @@ function renderAcademicSummary() {
   // New model: grade-wise ranking → cumulative → final position points
   const ranking = computeAcademicRanking();
 
-  const acadAll = entries.filter(e => e.category === 'Academics');
-  const dbg = {
-    totalEntries: entries.length,
-    acadEntries: acadAll.length,
-    overallEntries: acadAll.filter(e => gradeOf(e.subCategory) === null && String(e.subCategory || '').trim() !== '').length,
-    gradeEntries: acadAll.filter(e => gradeOf(e.subCategory) !== null).length,
-    students: studentData.length,
-    hasData: ranking.hasData,
-    cells: ranking.cells ? ranking.cells.map(c => c.grade + '|' + c.exam + '→' + (c.commonLabel || 'NONE')) : []
-  };
-  console.log('[ACAD DEBUG] ' + JSON.stringify(dbg));
-  const dbgEl = document.getElementById('acadDebugLine');
-  if(dbgEl) dbgEl.textContent = '[ACAD DEBUG] ' + JSON.stringify(dbg);
-
   if(ranking.hasData) {
     renderAcademicRankingTable(container, ranking);
     return;
   }
 
   // Fallbacks when no grade-wise average data is available
-  const acadEntries = acadAll;
+  const acadEntries = entries.filter(e => e.category === 'Academics');
   if(acadEntries.length > 0) {
     const classEntries = acadEntries.map(e => {
       const g = gradeOf(e.subCategory) || gradeOf(e.event);

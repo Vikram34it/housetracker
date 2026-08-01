@@ -3933,6 +3933,12 @@ function setImportRow(i, field, val) {
   if(field === 'category') { r.category = val; r.subCategory = (CATS[val]?.subs || [])[0] || ''; }
   if(field === 'subCategory') r.subCategory = val;
   if(field === 'points') { const n = parseInt(val); r.points = isNaN(n) ? 0 : n; }
+  if(field === 'position') {
+    const map = { '1st':1, '2nd':2, '3rd':3, '4th':4, '5th':5, 'Participation':'Participation', '':null };
+    r.position = val in map ? map[val] : null;
+    const pts = computeImportPoints(r.position, r.level);
+    r.points = pts == null ? (r.sheetPts != null ? r.sheetPts : 0) : pts;
+  }
   renderImportReview();
 }
 
@@ -3959,11 +3965,13 @@ function renderImportReview() {
     const subs = CATS[r.category]?.subs || [];
     const subOpts = subs.map(s => `<option value="${s}" ${r.subCategory === s ? 'selected' : ''}>${s}</option>`).join('');
     const ok = r.house && r.category && r.subCategory && r.points > 0;
+    const posLabel = (r.position == null || r.position === '') ? '' : (typeof r.position === 'number' ? ['','1st','2nd','3rd','4th','5th'][r.position] : r.position);
+    const posOpts = ['','1st','2nd','3rd','4th','5th','Participation'].map(p => `<option value="${p}" ${posLabel === p ? 'selected' : ''}>${p === '' ? '(none)' : p}</option>`).join('');
     html += `<tr>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${i+1}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><div style="font-weight:600">${r.name || '-'}</div>${r.cls ? `<div style="color:var(--muted)">${r.cls}</div>` : ''}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.event || '-'}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${typeof r.position === 'number' ? ['1st','2nd','3rd','4th','5th'][r.position-1] : r.position || '-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:115px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'position',this.value)">${posOpts}</select></td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${r.level}</td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:115px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'house',this.value)">${houseOpts}</select></td>
       <td style="padding:6px 8px;border-bottom:1px solid var(--border)"><select class="form-select" style="width:150px;padding:4px 6px;font-size:0.7rem" onchange="setImportRow(${i},'category',this.value)">${catOpts}</select></td>

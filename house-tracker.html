@@ -1920,6 +1920,16 @@ const CATS = {
   'Disciplinary': { points:[15,12,9,6,3], subs:['Best Discipline','Attendance Bonus','Code of Conduct'], color:'#c084fc' }
 };
 
+// Category-level re-ranking points: awarded to houses based on their subtotal position
+// (1st to 5th) within each category in the Comparative Event Summary.
+const CATEGORY_PTS = {
+  'Academics': [30,25,20,15,10],
+  'Sports': [20,16,12,8,4],
+  'Co-Curricular': [20,16,12,8,4],
+  'Unique Contributions': [15,12,9,6,3],
+  'Disciplinary': [15,12,9,6,3]
+};
+
 const SPORTS_PTS = {
   'Indoor Games': [7,5,3,2,1], 'Outdoor Games': [7,5,3,2,1],
   'Cross Country': [30,25,20,15,10], 'Athletics': [30,25,20,15,10], 'Swimming': [20,15,10,5,2]
@@ -2596,12 +2606,29 @@ function renderHouseEventsTable() {
 
   const closeCat = () => {
     if (prevCat === null) return;
+    // Re-rank the houses by this category's raw subtotal and assign category points (1st-5th)
+    const scale = CATEGORY_PTS[prevCat] || CATS[prevCat]?.points || [];
+    const ranked = houses.map(h => ({ house: h, total: cat[h] }))
+      .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
+    const rankMap = {};
+    ranked.forEach((x, i) => rankMap[x.house] = i);
+    const assigned = {};
+    let assignedTotal = 0;
+    houses.forEach(h => { assigned[h] = scale[rankMap[h]] || 0; assignedTotal += assigned[h]; });
+
     html += `<tr style="background:var(--card2)">
       <td colspan="2" style="text-align:right;font-weight:800;color:var(--accent)">${CAT_LABELS[prevCat] || prevCat} Subtotal</td>
-      ${houses.map(h => `<td style="text-align:center;font-weight:700;color:${HCOLOR[h]}">${cat[h]}</td>`).join('')}
-      <td class="cell-total" style="text-align:right;font-weight:700">${catTotal}</td>
+      ${houses.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${assigned[h]}<span style="font-size:0.68rem;font-weight:400;color:var(--muted)"> / ${cat[h]}</span></td>`).join('')}
+      <td class="cell-total" style="text-align:right;font-weight:700">${assignedTotal}</td>
     </tr>`;
-    houses.forEach(h => cat[h] = 0);
+    if (scale.length > 0) {
+      html += `<tr style="background:var(--card2);font-size:0.7rem;color:var(--muted)">
+        <td colspan="2" style="text-align:right;font-weight:700">Cap ${scale[0]} · 1st–5th:</td>
+        <td colspan="${houses.length + 1}" style="font-weight:700">${scale.join(', ')}</td>
+      </tr>`;
+    }
+    houses.forEach(h => { grand[h] += assigned[h]; cat[h] = 0; });
+    grandTotal += assignedTotal;
     catTotal = 0;
   };
 
@@ -2609,12 +2636,11 @@ function renderHouseEventsTable() {
     if (r.category !== prevCat) { closeCat(); prevCat = r.category; }
     const houseVals = r.houseVals || houses.map(h => pt(h, r.items));
     const rowTotal = houseVals.reduce((s, v) => s + v, 0);
-    houses.forEach((h, i) => { grand[h] += houseVals[i]; cat[h] += houseVals[i]; });
-    grandTotal += rowTotal;
+    houses.forEach((h, i) => { cat[h] += houseVals[i]; });
     catTotal += rowTotal;
 
     const catColor = CATS[r.category]?.color || 'var(--muted)';
-    const isFinalAcad = r.event === 'Final Overall';
+    const isFinalAcad = r.event === 'Overall Cumulative';
     html += `<tr${isFinalAcad ? ' style="border-top:2px solid var(--border);background:rgba(56,189,248,0.05)"' : ''}>
       <td><span style="color:${catColor};font-weight:600">${CAT_LABELS[r.category] || r.category}</span>${r.subCategory ? ` <span style="color:var(--muted);font-weight:400">· ${r.subCategory}</span>` : ''}</td>
       <td style="font-weight:${isFinalAcad ? '800' : '600'}">${r.event || '-'}</td>

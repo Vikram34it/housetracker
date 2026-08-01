@@ -3787,8 +3787,6 @@ async function saveBulk() {
   }
 }
 
-const IMPORT_POSITION_PTS = { 1:10, 2:8, 3:6, 4:4, 5:2, 'Participation':1 };
-const IMPORT_LEVEL_MULT = { 'National':4, 'State':3, 'Regional':2, 'Zonal':2, 'District':2, 'Inter-School':1, 'Intra-School':1, 'School':1, 'Cluster':1 };
 let importRows = [];
 let importCols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
 
@@ -3868,10 +3866,10 @@ function mapImportEvent(event) {
   return null;
 }
 
-function computeImportPoints(position, level) {
-  const base = IMPORT_POSITION_PTS[position];
-  if(base == null) return null;
-  return base * (IMPORT_LEVEL_MULT[level] || 1);
+function computeImportPoints(category, subCategory, position) {
+  if(!category || !subCategory) return null;
+  const pos = (typeof position === 'number' && position >= 1 && position <= 5) ? position : 0;
+  return calcPoints(category, subCategory, pos) || 0;
 }
 
 function handleImportFile(event) {
@@ -3912,14 +3910,17 @@ function buildImportRows(rows) {
     const sheetPts = importCols.points >= 0 ? parseInt(r[importCols.points]) : NaN;
     const position = normalizeImportPosition(posRaw);
     const mapped = mapImportEvent(event);
-    const computed = computeImportPoints(position, level);
-    const points = (computed == null ? (isNaN(sheetPts) ? 0 : sheetPts) : computed);
+    let category = mapped ? mapped.category : '';
+    let subCategory = mapped ? mapped.subCategory : '';
+    if(category === 'Unique Contributions' && ['National','State','District','Zonal','Regional','Inter-School'].includes(level)) subCategory = level;
+    const computed = computeImportPoints(category, subCategory, position);
+    const points = (computed == null || computed === 0) ? (isNaN(sheetPts) ? 0 : sheetPts) : computed;
     if(!name && !event) return;
     importRows.push({
       name, cls, event, level, position,
       house,
-      category: mapped ? mapped.category : '',
-      subCategory: mapped ? mapped.subCategory : '',
+      category,
+      subCategory,
       points,
       sheetPts: isNaN(sheetPts) ? null : sheetPts
     });
@@ -3930,14 +3931,22 @@ function setImportRow(i, field, val) {
   const r = importRows[i];
   if(!r) return;
   if(field === 'house') r.house = val;
-  if(field === 'category') { r.category = val; r.subCategory = (CATS[val]?.subs || [])[0] || ''; }
+  if(field === 'category') {
+    r.category = val;
+    if(val === 'Unique Contributions' && ['National','State','District','Zonal','Regional','Inter-School'].includes(r.level)) r.subCategory = r.level;
+    else r.subCategory = (CATS[val]?.subs || [])[0] || '';
+  }
   if(field === 'subCategory') r.subCategory = val;
-  if(field === 'points') { const n = parseInt(val); r.points = isNaN(n) ? 0 : n; }
   if(field === 'position') {
-    const map = { '1st':1, '2nd':2, '3rd':3, '4th':4, '5th':5, 'Participation':'Participation', '':null };
+    const map = { '1st':1, '2nd':2, '3rd':3, '4th':4, '5th':5, 'Participation':null, '':null };
     r.position = val in map ? map[val] : null;
-    const pts = computeImportPoints(r.position, r.level);
-    r.points = pts == null ? (r.sheetPts != null ? r.sheetPts : 0) : pts;
+  }
+  if(field === 'points') {
+    const n = parseInt(val);
+    r.points = isNaN(n) ? 0 : n;
+  } else {
+    const pts = computeImportPoints(r.category, r.subCategory, r.position);
+    r.points = (pts == null || pts === 0) ? (r.sheetPts != null ? r.sheetPts : 0) : pts;
   }
   renderImportReview();
 }
@@ -3981,7 +3990,7 @@ function renderImportReview() {
   });
   html += '</tbody></table></div>';
   const ready = importRows.filter(r => r.house && r.category && r.subCategory && r.points > 0).length;
-  wrap.innerHTML = html + `<div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">${ready} of ${importRows.length} rows ready to save. Edit any value before saving. Points are auto-computed from Position x Level (National 4x, State 3x, District 2x, School 1x; 1st 10, 2nd 8, 3rd 6, 4th 4, 5th 2, Participation 1).</div>`;
+  wrap.innerHTML = html + `<div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">${ready} of ${importRows.length} rows ready to save. Edit any value before saving. Points are auto-computed from the category/sub-category's existing points table based on position (1st-5th); if a position is unrecognized or scores 0, the Points column in your file is used.</div>`;
 }
 
 async function saveImport() {

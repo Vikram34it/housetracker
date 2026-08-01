@@ -1638,6 +1638,7 @@
       <div class="section-title">House Details</div>
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
+    <div id="acadDebugLine" style="background:#fff3cd;color:#664d00;padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px;white-space:pre-wrap"></div>
     <div id="academicSummaryContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
@@ -2870,13 +2871,28 @@ function renderAcademicSummary() {
 
   // New model: grade-wise ranking → cumulative → final position points
   const ranking = computeAcademicRanking();
+
+  const acadAll = entries.filter(e => e.category === 'Academics');
+  const dbg = {
+    totalEntries: entries.length,
+    acadEntries: acadAll.length,
+    overallEntries: acadAll.filter(e => gradeOf(e.subCategory) === null && String(e.subCategory || '').trim() !== '').length,
+    gradeEntries: acadAll.filter(e => gradeOf(e.subCategory) !== null).length,
+    students: studentData.length,
+    hasData: ranking.hasData,
+    cells: ranking.cells ? ranking.cells.map(c => c.grade + '|' + c.exam + '→' + (c.commonLabel || 'NONE')) : []
+  };
+  console.log('[ACAD DEBUG] ' + JSON.stringify(dbg));
+  const dbgEl = document.getElementById('acadDebugLine');
+  if(dbgEl) dbgEl.textContent = '[ACAD DEBUG] ' + JSON.stringify(dbg);
+
   if(ranking.hasData) {
     renderAcademicRankingTable(container, ranking);
     return;
   }
 
   // Fallbacks when no grade-wise average data is available
-  const acadEntries = entries.filter(e => e.category === 'Academics');
+  const acadEntries = acadAll;
   if(acadEntries.length > 0) {
     const classEntries = acadEntries.map(e => {
       const g = gradeOf(e.subCategory) || gradeOf(e.event);

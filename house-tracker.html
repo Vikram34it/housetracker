@@ -1150,6 +1150,46 @@
   .month-chip:hover { border-color: var(--accent); color: var(--text); }
   .month-chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .month-chip.has-data { border-color: rgba(56,189,248,0.4); }
+  .month-chip.chip-announced { border-color: rgba(34,197,94,0.5); }
+  .month-chip.chip-inprogress { border-color: rgba(245,158,11,0.5); }
+  .chip-status { margin-left: 5px; font-size: 0.72rem; }
+
+  .announcement-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .announcement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .badge-announced { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.4); }
+  .badge-inprogress { background: rgba(245,158,11,0.15); color: var(--gold); border: 1px solid rgba(245,158,11,0.4); }
+  .badge-upcoming { background: rgba(148,163,184,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+  .announcement-countdown {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
 
   .monthly-podium {
     display: flex;
@@ -1513,6 +1553,7 @@
         <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)" id="monthNext">▶</button>
       </div>
     </div>
+    <div class="announcement-banner" id="announcementBanner"></div>
     <div class="month-picker" id="monthPicker"></div>
     <div class="monthly-podium" id="monthlyPodium"></div>
     <div class="stats-grid" id="monthlyStatsGrid"></div>
@@ -1598,6 +1639,26 @@
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
     <div id="academicSummaryContainer"></div>
+    <div style="margin-top:28px">
+      <div class="section-header">
+        <div class="section-title">House-wise Event Summary</div>
+        <button class="btn btn-ghost btn-sm" onclick="printHouseEvents()">🖨️ Print</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="comparison-table" id="houseEventsTable">
+          <thead>
+            <tr>
+              <th>House</th>
+              <th>Category</th>
+              <th>Event</th>
+              <th>Date</th>
+              <th style="text-align:right">Points</th>
+            </tr>
+          </thead>
+          <tbody id="houseEventsBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- AWARDS VIEW -->
@@ -2295,6 +2356,62 @@ function getMonthLabel(ym) {
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
+// ===== ANNOUNCEMENT PLAN (results announced on the 3rd of every month) =====
+const ANNOUNCE_DAY = 3;
+
+function announceDateOf(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m, ANNOUNCE_DAY);
+}
+
+function isAnnounced(ym) {
+  return new Date() >= announceDateOf(ym);
+}
+
+function monthStatus(ym) {
+  const now = new Date();
+  const [y, m] = ym.split('-').map(Number);
+  if (now >= announceDateOf(ym)) return 'announced';
+  if (now < new Date(y, m - 1, 1)) return 'upcoming';
+  return 'in-progress';
+}
+
+function getLatestAnnouncedMonth() {
+  return getAvailableMonths().find(ym => isAnnounced(ym)) || null;
+}
+
+function getNextAnnouncement() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), ANNOUNCE_DAY);
+  if (now > next) next.setMonth(next.getMonth() + 1);
+  const days = Math.ceil((next - now) / 86400000);
+  return { date: next, days };
+}
+
+function renderAnnouncementBanner() {
+  const banner = document.getElementById('announcementBanner');
+  if (!banner) return;
+  const status = monthStatus(currentMonth);
+  const announceLabel = announceDateOf(currentMonth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const next = getNextAnnouncement();
+  const nextLabel = next.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const daysText = next.days === 1 ? 'tomorrow' : `in ${next.days} days`;
+
+  let badgeHtml, msg;
+  if (status === 'announced') {
+    badgeHtml = '<span class="announcement-badge badge-announced">✓ Announced</span>';
+    msg = `${getMonthLabel(currentMonth)} results were announced on ${announceLabel}.`;
+  } else if (status === 'upcoming') {
+    badgeHtml = '<span class="announcement-badge badge-upcoming">Upcoming</span>';
+    msg = `${getMonthLabel(currentMonth)} has not started yet.`;
+  } else {
+    badgeHtml = '<span class="announcement-badge badge-inprogress">In Progress</span>';
+    msg = `${getMonthLabel(currentMonth)} results will be announced on ${announceLabel}.`;
+  }
+
+  banner.innerHTML = `${badgeHtml}<span>${msg}</span><span class="announcement-countdown">📣 Next announcement: ${nextLabel} (${daysText})</span>`;
+}
+
 function changeMonth(delta) {
   const parts = currentMonth.split('-');
   let y = parseInt(parts[0]);
@@ -2321,6 +2438,7 @@ function calcPoints(cat,sub,pos) {
 function render() {
   renderDashboard();
   renderHouseDetails();
+  renderHouseEventsTable();
   renderMonthlyStats();
   renderAwards();
   renderHistory();
@@ -2427,6 +2545,77 @@ function renderHouseDetails() {
       </div>`;
   }).join('');
   renderAcademicSummary();
+}
+
+function renderHouseEventsTable() {
+  const body = document.getElementById('houseEventsBody');
+  if (!body) return;
+
+  const withEntries = getSorted().filter(h => entries.some(e => e.house === h.house));
+  if (withEntries.length === 0) {
+    body.innerHTML = `<tr><td colspan="5"><div class="monthly-empty"><div class="monthly-empty-icon">📋</div><div style="font-weight:700;margin-bottom:4px">No events yet</div><div style="color:var(--muted)">Add points to see the house-wise event summary</div></div></td></tr>`;
+    return;
+  }
+
+  const dateFmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  let html = '';
+  let grandTotal = 0;
+
+  withEntries.forEach(h => {
+    const houseEntries = entries
+      .filter(e => e.house === h.house)
+      .sort((a, b) => new Date(a.date) - new Date(b.date) || String(a.category).localeCompare(String(b.category)));
+    const total = houseEntries.reduce((s, e) => s + e.points, 0);
+    grandTotal += total;
+
+    houseEntries.forEach((e, i) => {
+      const catColor = CATS[e.category]?.color || 'var(--muted)';
+      html += `<tr${i === 0 ? ` style="border-top:2px solid ${HCOLOR[h.house]}"` : ''}>
+        <td>${i === 0 ? `<span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span>` : ''}</td>
+        <td><span style="color:${catColor};font-weight:600">${CAT_LABELS[e.category] || e.category}</span>${e.subCategory ? ` <span style="color:var(--muted);font-weight:400">· ${e.subCategory}</span>` : ''}</td>
+        <td>${e.event || '-'}</td>
+        <td style="white-space:nowrap;color:var(--muted)">${dateFmt(e.date)}</td>
+        <td class="cell-total" style="text-align:right;color:${e.points >= 0 ? 'var(--success)' : 'var(--danger)'}">${e.points >= 0 ? '+' : ''}${e.points}</td>
+      </tr>`;
+    });
+
+    html += `<tr style="background:var(--card2)">
+      <td colspan="4" style="text-align:right;font-weight:800;color:${HCOLOR[h.house]}">${h.house} Total</td>
+      <td class="cell-total" style="text-align:right;font-weight:800;color:${HCOLOR[h.house]}">${total}</td>
+    </tr>`;
+  });
+
+  html += `<tr style="background:var(--card2);border-top:2px solid var(--border)">
+    <td colspan="4" style="text-align:right;font-weight:800">Grand Total</td>
+    <td class="cell-total" style="text-align:right;font-weight:800">${grandTotal}</td>
+  </tr>`;
+
+  body.innerHTML = html;
+}
+
+function printHouseEvents() {
+  const tableHtml = document.getElementById('houseEventsTable').outerHTML;
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+  const theme = localStorage.getItem('vivaTheme') || 'classic';
+  w.document.write(`<!DOCTYPE html><html><head><title>House-wise Event Summary</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      td { padding: 7px 10px; border: 1px solid #cbd5e1; }
+      tr:has(td[colspan]) td { font-weight: 700; background: #f1f5f9; }
+      @media print { .no-print { display: none; } }
+    </style></head><body>
+    <h1>House-wise Event Summary</h1>
+    <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
+    ${tableHtml}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 300);
 }
 
 function computeOverallData(acadEntries) {
@@ -2831,6 +3020,9 @@ function renderMonthlyStats() {
   // Update month display
   document.getElementById('monthDisplay').textContent = getMonthLabel(currentMonth);
 
+  // Announcement banner
+  renderAnnouncementBanner();
+
   // Render month picker chips
   const available = getAvailableMonths();
   const allMonths = [];
@@ -2851,7 +3043,10 @@ function renderMonthlyStats() {
   document.getElementById('monthPicker').innerHTML = allMonths.map(ym => {
     const hasData = available.includes(ym);
     const isActive = ym === currentMonth;
-    return `<button class="month-chip ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''}" onclick="selectMonth('${ym}')">${getMonthLabel(ym)}</button>`;
+    const st = monthStatus(ym);
+    const chipClass = st === 'announced' ? 'chip-announced' : st === 'in-progress' ? 'chip-inprogress' : '';
+    const chipBadge = st === 'announced' ? '<span class="chip-status">✓</span>' : st === 'in-progress' ? '<span class="chip-status">◔</span>' : '';
+    return `<button class="month-chip ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''} ${chipClass}" onclick="selectMonth('${ym}')">${getMonthLabel(ym)}${chipBadge}</button>`;
   }).join('');
 
   if (monthEntries.length === 0) {
@@ -3324,6 +3519,10 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(activeView+'View').classList.add('active');
     renderNavTabs();
+    if (activeView === 'monthly') {
+      const latest = getLatestAnnouncedMonth();
+      if (latest) { currentMonth = latest; renderMonthlyStats(); }
+    }
   });
 });
 

@@ -1809,6 +1809,16 @@
           <span id="importFileInfo" style="font-size:0.8rem;color:var(--muted)"></span>
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Category for this file</label>
+        <select class="form-select" id="importCategoryOverride" onchange="setImportCategoryOverride(this.value)">
+          <option value="">Auto-detect by event</option>
+          <option value="Unique Contributions">Unique Contributions</option>
+          <option value="Sports">Sports</option>
+          <option value="Co-Curricular">Co-Curricular</option>
+          <option value="Disciplinary">Disciplinary</option>
+        </select>
+      </div>
       <div id="importReview"></div>
     </div>
     <div class="modal-footer">
@@ -3789,11 +3799,17 @@ async function saveBulk() {
 
 let importRows = [];
 let importCols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
+let importCategoryOverride = '';
+let lastImportData = [];
 
 function openImport() {
   document.getElementById('importModal').classList.add('active');
   importRows = [];
   importCols = { name:-1, cls:-1, event:-1, position:-1, level:-1, house:-1, points:-1 };
+  importCategoryOverride = '';
+  lastImportData = [];
+  const sel = document.getElementById('importCategoryOverride');
+  if(sel) sel.value = '';
   document.getElementById('importFileInfo').textContent = '';
   document.getElementById('importReview').innerHTML = '';
   document.getElementById('importFileInput').value = '';
@@ -3868,6 +3884,10 @@ function mapImportEvent(event) {
 
 function computeImportPoints(category, subCategory, position) {
   if(!category || !subCategory) return null;
+  if(category === 'Unique Contributions' && position === 'Participation') {
+    const pts = UNIQUE_PTS[subCategory];
+    return pts ? (pts[3] || 0) : 0;
+  }
   const pos = (typeof position === 'number' && position >= 1 && position <= 5) ? position : 0;
   return calcPoints(category, subCategory, pos) || 0;
 }
@@ -3887,7 +3907,8 @@ function handleImportFile(event) {
       const data = XLSX.utils.sheet_to_json(sheet, { header:1 });
       if(!data || data.length < 2) { showToast('File has no data rows', 'error'); info.textContent = ''; return; }
       importCols = detectImportCols(data[0]);
-      buildImportRows(data.slice(1));
+      lastImportData = data.slice(1);
+      buildImportRows(lastImportData);
       info.textContent = file.name + ' — ' + importRows.length + ' rows parsed';
       renderImportReview();
     } catch(err) {
@@ -3910,9 +3931,17 @@ function buildImportRows(rows) {
     const sheetPts = importCols.points >= 0 ? parseInt(r[importCols.points]) : NaN;
     const position = normalizeImportPosition(posRaw);
     const mapped = mapImportEvent(event);
-    let category = mapped ? mapped.category : '';
-    let subCategory = mapped ? mapped.subCategory : '';
-    if(category === 'Unique Contributions' && ['National','State','District','Zonal','Regional','Inter-School'].includes(level)) subCategory = level;
+    let category = importCategoryOverride || (mapped ? mapped.category : '');
+    let subCategory = '';
+    if(importCategoryOverride) {
+      if(importCategoryOverride === 'Unique Contributions' && ['National','State','District','Zonal','Regional','Inter-School'].includes(level)) subCategory = level;
+      else if(importCategoryOverride === 'Unique Contributions') subCategory = 'Volunteering';
+      else if(mapped && mapped.category === importCategoryOverride) subCategory = mapped.subCategory;
+      else subCategory = (CATS[importCategoryOverride]?.subs || [])[0] || '';
+    } else if(mapped) {
+      subCategory = mapped.subCategory;
+      if(category === 'Unique Contributions' && ['National','State','District','Zonal','Regional','Inter-School'].includes(level)) subCategory = level;
+    }
     const computed = computeImportPoints(category, subCategory, position);
     const points = (computed == null || computed === 0) ? (isNaN(sheetPts) ? 0 : sheetPts) : computed;
     if(!name && !event) return;
@@ -3925,6 +3954,14 @@ function buildImportRows(rows) {
       sheetPts: isNaN(sheetPts) ? null : sheetPts
     });
   });
+}
+
+function setImportCategoryOverride(val) {
+  importCategoryOverride = val;
+  if(lastImportData.length) {
+    buildImportRows(lastImportData);
+    renderImportReview();
+  }
 }
 
 function setImportRow(i, field, val) {
@@ -4004,7 +4041,7 @@ async function saveImport() {
     position: typeof r.position === 'number' ? r.position : 0,
     points: r.points,
     event: r.event,
-    note: [r.name, r.cls, 'Level: ' + r.level].filter(Boolean).join(' · '),
+    note: [r.name, r.cls, r.event, 'Level: ' + r.level].filter(Boolean).join(' · '),
     date: new Date().toISOString()
   }));
   try {

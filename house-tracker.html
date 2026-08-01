@@ -2461,23 +2461,15 @@ function renderNavTabs() {
 }
 
 function renderDashboard() {
-  const sorted = getSorted();
+  const sorted = getCategoryRankedStandings();
   const maxPts = Math.max(...sorted.map(s=>s.total),1);
-
-  // Assign ranks (ties get same rank)
-  let ranks = [];
-  let prevTotal = null, prevRank = 0;
-  sorted.forEach((s, i) => {
-    if(s.total !== prevTotal) { prevRank = i + 1; prevTotal = s.total; }
-    ranks.push(prevRank);
-  });
 
   // Podium: top 3 ranks, individual boxes
   const podiumRanks = [1, 2, 3];
   const podiumOrder = [];
   podiumRanks.forEach(r => {
     sorted.forEach((s, i) => {
-      if(ranks[i] === r) podiumOrder.push({...s, rank: r});
+      if(s.rank === r) podiumOrder.push({...s, rank: r});
     });
   });
 
@@ -2487,7 +2479,7 @@ function renderDashboard() {
   document.getElementById('podium').innerHTML = podiumOrder.map((item) => {
     const rankIdx = item.rank - 1;
     const catBreakdown = Object.keys(CATS).map(c =>
-      `<div class="podium-cat"><span>${c}</span><span>${getCatTotal(item.house,c)}</span></div>`
+      `<div class="podium-cat"><span>${CAT_LABELS[c] || c}</span><span>${item.byCat[c]}</span></div>`
     ).join('');
     return `
       <div class="podium-spot ${spotClasses[rankIdx]}">
@@ -2501,8 +2493,8 @@ function renderDashboard() {
   }).join('');
 
   // Stats cards
-  document.getElementById('statsGrid').innerHTML = sorted.map((h,i) => {
-    const best = getMaxCat(h.house);
+  document.getElementById('statsGrid').innerHTML = sorted.map((h) => {
+    const best = Object.keys(CATS).reduce((m, c) => (h.byCat[c] > m.val ? { cat: c, val: h.byCat[c] } : m), { cat: '', val: -1 });
     return `
       <div class="stat-box">
         <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
@@ -2510,17 +2502,15 @@ function renderDashboard() {
         <div class="stat-bar">
           <div class="stat-bar-fill" style="width:${(h.total/maxPts)*100}%;background:${HCOLOR[h.house]}"></div>
         </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${best.cat} (${best.val})</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${CAT_LABELS[best.cat] || best.cat} (${best.val})</div>
       </div>`;
   }).join('');
 }
 
 function renderHouseDetails() {
-  const sorted = getSorted();
+  const sorted = getCategoryRankedStandings();
   const cats = Object.keys(CATS);
-  const rankPts = getCategoryRankPoints();
-  const ptsFor = (house) => cats.reduce((s, c) => s + ((rankPts.ranked[c] && rankPts.ranked[c][house]) || 0), 0);
-  const maxPts = Math.max(...sorted.map(s => ptsFor(s.house)), 1);
+  const maxPts = Math.max(...sorted.map(s => s.total), 1);
 
   document.getElementById('houseDetails').innerHTML = sorted.map((h) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
@@ -2528,7 +2518,7 @@ function renderHouseDetails() {
     const badge = rankLabels[h.rank-1] || '#' + h.rank;
     const rc = rankColors[h.rank-1] || 'rgba(148,163,184,0.15);color:#64748b';
     const bars = cats.map(c => {
-      const v = (rankPts.ranked[c] && rankPts.ranked[c][h.house]) || 0;
+      const v = h.byCat[c] || 0;
       const pct = maxPts > 0 ? (v / maxPts) * 100 : 0;
       return `
         <div class="cat-bar-row">
@@ -2539,7 +2529,6 @@ function renderHouseDetails() {
           <div class="cat-bar-value">${v}</div>
         </div>`;
     }).join('');
-    const ptsTotal = ptsFor(h.house);
 
     return `
       <div class="house-detail-card" style="border-top:3px solid ${HCOLOR[h.house]}">
@@ -2547,7 +2536,7 @@ function renderHouseDetails() {
           <div class="house-detail-name" style="color:${HCOLOR[h.house]}">${h.house}</div>
           <div class="house-detail-rank ${h.rank <= 3 ? 'is-medal' : ''}" style="background:${rc.split(';')[0]};${rc.split(';')[1]}">${badge}</div>
         </div>
-        <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${ptsTotal}</div>
+        <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
         <div class="category-bars">${bars}</div>
         ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
@@ -2880,6 +2869,24 @@ function getCategoryRankPoints() {
     houses.forEach(h => ranked[cat][h] = scale[rankMap[h]] || 0);
   });
   return { houses, ranked };
+}
+
+// Standings built from the Comparative Event Summary's re-ranked category points.
+// Total = sum of the per-category ranked points; used by the Dashboard and House Details cards.
+function getCategoryRankedStandings() {
+  const rp = getCategoryRankPoints();
+  const cats = Object.keys(CATS);
+  const arr = rp.houses.map(house => {
+    const byCat = {};
+    let total = 0;
+    cats.forEach(c => { byCat[c] = (rp.ranked[c] && rp.ranked[c][house]) || 0; total += byCat[c]; });
+    return { house, total, byCat };
+  }).sort((a, b) => b.total - a.total);
+  arr.forEach((h, i) => {
+    if(i === 0 || h.total !== arr[i-1].total) h.rank = i + 1;
+    else h.rank = arr[i-1].rank;
+  });
+  return arr;
 }
 
 function renderAcademicRankingTable(container, ranking) {

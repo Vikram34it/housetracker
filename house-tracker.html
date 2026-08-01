@@ -2295,8 +2295,15 @@ async function restoreBackup(event) {
 }
 
 // ===== HELPERS =====
-function getHouseTotal(h) { return entries.filter(e=>e.house===h).reduce((s,e)=>s+e.points,0); }
-function getCatTotal(h,c) { return entries.filter(e=>e.house===h&&e.category===c).reduce((s,e)=>s+e.points,0); }
+function getHouseTotal(h) {
+  const academic = getAcadPoints(h);
+  const rest = entries.filter(e => e.house === h && e.category !== 'Academics').reduce((s, e) => s + e.points, 0);
+  return academic + rest;
+}
+function getCatTotal(h, c) {
+  if(c === 'Academics') return getAcadPoints(h);
+  return entries.filter(e => e.house === h && e.category === c).reduce((s, e) => s + e.points, 0);
+}
 function getSorted() {
   const arr = HOUSES.map(h=>({house:h,total:getHouseTotal(h)})).sort((a,b)=>b.total-a.total);
   arr.forEach((h,i) => {
@@ -2423,6 +2430,7 @@ function calcPoints(cat,sub,pos) {
 
 // ===== RENDER FUNCTIONS =====
 function render() {
+  acadRankingCache = null;
   renderDashboard();
   renderHouseDetails();
   renderHouseEventsTable();
@@ -2657,33 +2665,213 @@ function computeOverallData(acadEntries) {
   };
 }
 
+// ===== ACADEMIC RANKING MODEL =====
+// Grade-wise: each grade + exam ranks the houses by average marks → position points (30/25/20/15/10).
+// Cumulative points across all grades/exams decide the final overall position → final points.
+let acadRankingCache = null;
+
+function computeAcademicRanking() {
+  if(acadRankingCache) return acadRankingCache;
+  const acadPts = CATS.Academics.points;
+  const cells = {};
+  let found = false;
+
+  // Primary source: academic entries carrying an "Avg:" note (from Excel imports)
+  entries.forEach(e => {
+    if(e.category !== 'Academics') return;
+    if(!HOUSES.includes(e.house)) return;
+    const g = gradeOf(e.subCategory) || gradeOf(e.event);
+    if(g === null) return;
+    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
+    if(!m) return;
+    found = true;
+    const key = g + '|' + (e.event || 'General');
+    if(!cells[key]) cells[key] = { grade: g, exam: e.event || 'General', houses: {} };
+    if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
+    const d = cells[key].houses[e.house];
+    d.avgSum += parseFloat(m[1]);
+    d.count++;
+  });
+
+  // Fallback source: studentData averages per grade + exam
+  if(!found && studentData && studentData.length > 0) {
+    studentData.forEach(s => {
+      const g = gradeOf(s.cls);
+      if(g === null) return;
+      if(!HOUSES.includes(s.house)) return;
+      found = true;
+      const key = g + '|' + (s.exam || 'General');
+      if(!cells[key]) cells[key] = { grade: g, exam: s.exam || 'General', houses: {} };
+      if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
+      const d = cells[key].houses[s.house];
+      d.avgSum += s.total || 0;
+      d.count++;
+    });
+  }
+
+  if(!found) {
+    acadRankingCache = { hasData: false, cells: [], cumulative: {}, finalRank: {}, finalPoints: {} };
+    return acadRankingCache;
+  }
+
+  const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
+
+  // Rank each grade + exam cell
+  const cellList = Object.values(cells).sort((a, b) => a.grade - b.grade || String(a.exam).localeCompare(String(b.exam)));
+  cellList.forEach(cell => {
+    const list = HOUSES.map(h => {
+      const d = cell.houses[h];
+      return { house: h, avg: d ? d.avgSum / d.count : null };
+    });
+    list.sort((a, b) => {
+      if(a.avg === null && b.avg === null) return 0;
+      if(a.avg === null) return 1;
+      if(b.avg === null) return -1;
+      return b.avg - a.avg;
+    });
+    const rankMap = {};
+    list.forEach((x, i) => { rankMap[x.house] = i; });
+    cell.houseData = {};
+    HOUSES.forEach(h => {
+      const d = cell.houses[h];
+      const rank = rankMap[h];
+      cell.houseData[h] = {
+        avg: d ? d.avgSum / d.count : null,
+        rank: d ? rank + 1 : null,
+        rankLabel: d ? (rankLabels[rank] || (rank + 1) + 'th') : '—',
+        pts: d ? (acadPts[rank] || 0) : 0
+      };
+    });
+  });
+
+  // Cumulative points across all cells
+  const cumulative = {};
+  HOUSES.forEach(h => cumulative[h] = 0);
+  cellList.forEach(cell => HOUSES.forEach(h => cumulative[h] += cell.houseData[h].pts));
+
+  // Final overall position by cumulative points → final points awarded
+  const sorted = HOUSES.map(h => ({ house: h, total: cumulative[h] })).sort((a, b) => b.total - a.total);
+  const finalRank = {};
+  const finalPoints = {};
+  sorted.forEach((x, i) => { finalRank[x.house] = i + 1; finalPoints[x.house] = acadPts[i] || 0; });
+
+  acadRankingCache = { hasData: true, cells: cellList, cumulative, finalRank, finalPoints };
+  return acadRankingCache;
+}
+
+function getAcadPoints(h) {
+  const r = computeAcademicRanking();
+  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
+  return r.finalPoints[h] || 0;
+}
+
+function renderAcademicRankingTable(container, ranking) {
+  const { cells, cumulative, finalRank, finalPoints } = ranking;
+
+  let html = `<div class="academic-summary">
+    <div class="academic-summary-title">🏆 Inter-House Performance Analytics</div>
+    <div class="table-wrapper">
+    <table class="academic-summary-table">
+      <thead><tr>
+        <th>Exam</th>
+        ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
+        <th style="text-align:right">Total</th>
+      </tr></thead><tbody>`;
+
+  const gradeTotals = {};
+  HOUSES.forEach(h => gradeTotals[h] = 0);
+  let gradeTotal = 0;
+  let prevGrade = null;
+
+  const closeGrade = () => {
+    if(prevGrade === null) return;
+    html += `<tr style="background:var(--card2)">
+      <td style="text-align:right;font-weight:800;color:var(--accent)">Grade ${prevGrade} Subtotal</td>
+      ${HOUSES.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR_DARK[h]}">${gradeTotals[h]}</td>`).join('')}
+      <td style="text-align:right;font-weight:800;color:var(--accent)">${gradeTotal}</td>
+    </tr>`;
+    HOUSES.forEach(h => gradeTotals[h] = 0);
+    gradeTotal = 0;
+  };
+
+  cells.forEach(cell => {
+    if(cell.grade !== prevGrade) {
+      closeGrade();
+      prevGrade = cell.grade;
+      html += `<tr><td colspan="${HOUSES.length + 2}" style="font-weight:800;padding:12px 16px;background:var(--card);color:var(--accent);border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Grade ${cell.grade}</td></tr>`;
+    }
+    const rowTotal = HOUSES.reduce((s, h) => s + cell.houseData[h].pts, 0);
+    html += `<tr>
+      <td style="font-weight:700">${cell.exam}</td>
+      ${HOUSES.map(h => {
+        const v = cell.houseData[h];
+        if(v.avg === null) return `<td style="text-align:center;color:var(--muted)">—</td>`;
+        return `<td style="text-align:center">
+          <span style="font-weight:800;font-size:1.1rem;color:${HCOLOR_DARK[h]}">${v.pts}</span>
+          <span style="font-size:0.75rem;font-weight:700;color:var(--muted)"> · ${v.rankLabel}</span>
+        </td>`;
+      }).join('')}
+      <td style="text-align:right;font-weight:700">${rowTotal}</td>
+    </tr>`;
+    HOUSES.forEach(h => gradeTotals[h] += cell.houseData[h].pts);
+    gradeTotal += rowTotal;
+  });
+  closeGrade();
+
+  // Overall cumulative
+  const grand = HOUSES.reduce((s, h) => s + cumulative[h], 0);
+  html += `<tr style="background:var(--card2)">
+    <td style="text-align:right;font-weight:800">Overall Cumulative</td>
+    ${HOUSES.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR_DARK[h]}">${cumulative[h]}</td>`).join('')}
+    <td style="text-align:right;font-weight:800">${grand}</td>
+  </tr>`;
+
+  // Final position & points
+  const finalSum = HOUSES.reduce((s, h) => s + finalPoints[h], 0);
+  html += `<tr style="background:var(--card2);border-top:2px solid var(--border)">
+    <td style="text-align:right;font-weight:800">Final Position (overall)</td>
+    ${HOUSES.map(h => {
+      const r = finalRank[h];
+      const ord = r === 1 ? 'st' : r === 2 ? 'nd' : r === 3 ? 'rd' : 'th';
+      return `<td style="text-align:center">
+        <span style="font-weight:800;font-size:1.15rem;color:${HCOLOR_DARK[h]}">${finalPoints[h]}</span>
+        <span style="font-size:0.8rem;font-weight:800;color:var(--text)"> ${r}${ord}</span>
+      </td>`;
+    }).join('')}
+    <td style="text-align:right;font-weight:800">${finalSum}</td>
+  </tr></tbody></table></div></div>`;
+
+  container.innerHTML = html;
+}
+
 function renderAcademicSummary() {
   const container = document.getElementById('academicSummaryContainer');
 
-  const acadEntries = entries.filter(e => e.category === 'Academics');
-  const classEntries = acadEntries.map(e => {
-    const g = gradeOf(e.subCategory) || gradeOf(e.event);
-    return g !== null ? {...e, _grade: g} : null;
-  }).filter(e => e !== null);
-
-  // 1) Grade-based entries → class + event breakdown (+ Overall column)
-  if(classEntries.length > 0) {
-    renderFromEntries(container, classEntries, acadEntries);
+  // New model: grade-wise ranking → cumulative → final position points
+  const ranking = computeAcademicRanking();
+  if(ranking.hasData) {
+    renderAcademicRankingTable(container, ranking);
     return;
   }
 
-  // 2) Any academic entries (from imports) → event-wise with event name in cells
+  // Fallbacks when no grade-wise average data is available
+  const acadEntries = entries.filter(e => e.category === 'Academics');
   if(acadEntries.length > 0) {
+    const classEntries = acadEntries.map(e => {
+      const g = gradeOf(e.subCategory) || gradeOf(e.event);
+      return g !== null ? {...e, _grade: g} : null;
+    }).filter(e => e !== null);
+    if(classEntries.length > 0) {
+      renderFromEntries(container, classEntries, acadEntries);
+      return;
+    }
     renderFromAcadEntries(container, acadEntries);
     return;
   }
-
-  // 3) studentData → class-wise avg scores (no event names)
   if(studentData && studentData.length > 0) {
     renderFromStudentData(container);
     return;
   }
-
   container.innerHTML = '';
 }
 
@@ -2717,7 +2905,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
     });
   }
 
-  const classes = Object.keys(classEventData).sort((a, b) => {
+  const classes = [...new Set([...Object.keys(classEventData), ...Object.keys(studentAvgs)])].sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
     if(!isNaN(na) && !isNaN(nb)) return na - nb;
     return a.localeCompare(b);
@@ -2729,11 +2917,14 @@ function renderFromEntries(container, classEntries, acadEntries) {
   const ov = computeOverallData(acadEntries);
   const totalRows = classes.reduce((n, cls) => n + Math.max(Object.keys(classEventData[cls] || {}).length, 1), 0);
   let renderedRows = 0;
-  const examTypeCell = () => {
+  const examTypeCell = (event) => {
     const isFirst = renderedRows === 0;
     renderedRows++;
-    if(!ov.hasOverall || !isFirst) return '';
-    return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    if(ov.hasOverall) {
+      if(!isFirst) return '';
+      return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    }
+    return `<td class="house-cell" style="color:var(--text);font-weight:700;text-align:center">${event || ov.overallLabel}</td>`;
   };
 
   const avgOf = (cls, event, house) => {
@@ -2748,7 +2939,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
     <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        ${ov.hasOverall ? `<th>Exam Type</th>` : ''}
+        <th>Exam Type</th>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
@@ -2765,7 +2956,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       const rankMap = {};
       houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>` + examTypeCell() + `<td class="cls-cell">${cls}</td>`;
+      html += `<tr>` + examTypeCell((classExams[cls] || ['General']).join(', ')) + `<td class="cls-cell">${cls}</td>`;
       HOUSES.forEach(h => {
         const d = studentAvgs[cls] && studentAvgs[cls][h];
         if(!d || d.count === 0) {
@@ -2801,7 +2992,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       const rankMap = {};
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>` + examTypeCell() + (ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : '');
+      html += `<tr>` + examTypeCell(event) + (ei === 0 ? `<td class="cls-cell" rowspan="${events.length}">${cls}</td>` : '');
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) {
@@ -2982,11 +3173,14 @@ function renderFromAcadWithStudentData(container, acadEntries) {
   const ov = computeOverallData(acadEntries);
   const totalRows = classes.reduce((n, cls) => n + Object.keys(classEventData[cls]).length, 0);
   let renderedRows = 0;
-  const examTypeCell = () => {
+  const examTypeCell = (exam) => {
     const isFirst = renderedRows === 0;
     renderedRows++;
-    if(!ov.hasOverall || !isFirst) return '';
-    return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    if(ov.hasOverall) {
+      if(!isFirst) return '';
+      return `<td class="house-cell" style="color:var(--text);font-weight:800;text-align:center" rowspan="${totalRows}">${ov.overallLabel}</td>`;
+    }
+    return `<td class="house-cell" style="color:var(--text);font-weight:700;text-align:center">${exam || ov.overallLabel}</td>`;
   };
 
   let html = `<div class="academic-summary">
@@ -2994,7 +3188,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     <div class="table-wrapper">
     <table class="academic-summary-table">
       <thead><tr>
-        ${ov.hasOverall ? `<th>Exam Type</th>` : ''}
+        <th>Exam Type</th>
         <th>Grade</th>
         ${HOUSES.map(h => `<th style="color:${HCOLOR_DARK[h]}">${h} House</th>`).join('')}
       </tr></thead><tbody>`;
@@ -3011,7 +3205,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       const rankMap = {};
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>` + examTypeCell() + (ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${cls}</td>` : '');
+      html += `<tr>` + examTypeCell(exam) + (ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${cls}</td>` : '');
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) { html += `<td class="house-cell" style="color:var(--muted)">—</td>`; return; }

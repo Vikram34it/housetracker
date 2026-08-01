@@ -2569,13 +2569,13 @@ function renderHouseEventsTable() {
     return String(a.subCategory || '').localeCompare(String(b.subCategory || '')) || String(a.event).localeCompare(String(b.event));
   });
 
-  // Academics final overall points row (replaces grade-wise academic entries in the summary)
+  // Academics overall cumulative points row (replaces grade-wise academic entries in the summary)
   const acadRow = {
     category: 'Academics',
     subCategory: '',
-    event: 'Final Overall',
+    event: 'Overall Cumulative',
     items: [],
-    houseVals: houses.map(h => getAcadPoints(h))
+    houseVals: houses.map(h => getAcadCumulative(h))
   };
   rows.unshift(acadRow);
 
@@ -2821,6 +2821,12 @@ function getAcadPoints(h) {
   const r = computeAcademicRanking();
   if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
   return r.finalPoints[h] || 0;
+}
+
+function getAcadCumulative(h) {
+  const r = computeAcademicRanking();
+  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
+  return r.cumulative[h] || 0;
 }
 
 function renderAcademicRankingTable(container, ranking) {

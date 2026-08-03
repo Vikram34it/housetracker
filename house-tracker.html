@@ -2909,14 +2909,25 @@ function computeCategoryRankPoints() {
     if(cat === 'Academics') houses.forEach(h => raw[cat][h] = getAcadCumulative(h));
     const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
       .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
+    // Standard competition ranking: equal subtotals share the same position and points,
+    // and the next rank/position is skipped (e.g. 1st, 1st, 3rd).
     const rankMap = {};
-    order.forEach((x, i) => rankMap[x.house] = i);
+    const rankIdxMap = {};
+    let prevTotal = null;
+    let prevRankIdx = 0;
+    order.forEach((x, i) => {
+      const rankIdx = (i > 0 && x.total === prevTotal) ? prevRankIdx : i;
+      rankIdxMap[x.house] = rankIdx;
+      rankMap[x.house] = rankIdx + 1;
+      prevTotal = x.total;
+      prevRankIdx = rankIdx;
+    });
     ranked[cat] = {};
     rank[cat] = {};
     // A house with zero raw points in a category gets nothing, regardless of rank position
     houses.forEach(h => {
-      ranked[cat][h] = raw[cat][h] ? (scale[rankMap[h]] || 0) : 0;
-      rank[cat][h] = rankMap[h] + 1;
+      ranked[cat][h] = raw[cat][h] ? (scale[rankIdxMap[h]] || 0) : 0;
+      rank[cat][h] = rankMap[h];
     });
   });
   categoryRankCache = { houses, ranked, raw, rank };

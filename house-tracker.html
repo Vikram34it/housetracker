@@ -1098,6 +1098,7 @@
 
   tr:hover .delete-btn { opacity: 1; }
   .delete-btn:hover { color: var(--danger); }
+  .row-actions { display: flex; gap: 6px; justify-content: center; align-items: center; }
 
   .empty-state {
     text-align: center;
@@ -1548,40 +1549,15 @@
   <div class="view" id="monthlyView">
     <div class="section-header">
       <div class="section-title">Monthly Statistics</div>
-      <div class="month-nav">
-        <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)" id="monthPrev">◀</button>
-        <div class="month-display" id="monthDisplay"></div>
-        <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)" id="monthNext">▶</button>
-      </div>
+      <div style="font-size:0.8rem;color:var(--muted)" id="monthlyWindowLabel"></div>
     </div>
-    <div class="announcement-banner" id="announcementBanner"></div>
-    <div class="month-picker" id="monthPicker"></div>
-    <div class="monthly-podium" id="monthlyPodium"></div>
-    <div class="stats-grid" id="monthlyStatsGrid"></div>
-    <div style="margin-top:20px">
+    <div class="house-detail-grid" id="monthlyHouseDetails"></div>
+    <div style="margin-top:28px">
       <div class="section-header">
-        <div class="section-title">Monthly Category Breakdown</div>
+        <div class="section-title">Comparative Event Summary</div>
+        <button class="btn btn-ghost btn-sm" onclick="printMonthlyHouseEvents()">🖨️ Print</button>
       </div>
-      <table class="comparison-table" id="monthlyComparisonTable"></table>
-    </div>
-    <div style="margin-top:20px">
-      <div class="section-header">
-        <div class="section-title">Monthly Entry Log</div>
-      </div>
-      <table class="history-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>House</th>
-            <th>Category</th>
-            <th>Sub-Category</th>
-            <th>Event</th>
-            <th>Points</th>
-            <th>Note</th>
-          </tr>
-        </thead>
-        <tbody id="monthlyHistoryBody"></tbody>
-      </table>
+      <div style="overflow-x:auto" id="monthlyHouseEventsTableContainer"></div>
     </div>
   </div>
 
@@ -1757,6 +1733,55 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('add')">Cancel</button>
       <button class="btn btn-success" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT POINTS MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Edit Entry</h2>
+      <button class="modal-close" onclick="closeModal('edit')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">House</label>
+          <select class="form-select" id="editHouse"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="editCategory" onchange="updateAddSub('edit')"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sub-Category</label>
+          <select class="form-select" id="editSubCategory" onchange="updateAddPoints('edit')"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Position</label>
+          <select class="form-select" id="editPosition" onchange="updateAddPoints('edit')"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Points</label>
+        <input type="number" class="form-input" id="editPoints" placeholder="Auto-calculated">
+        <div class="form-helper" id="editPointsHelper">Points auto-calculated based on category</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Event / Description</label>
+        <input type="text" class="form-input" id="editEvent" placeholder="e.g. Annual Sports Day">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <textarea class="form-textarea" id="editNote" placeholder="Any additional details..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit')">Cancel</button>
+      <button class="btn btn-success" onclick="saveEditEntry()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -1938,7 +1963,7 @@
 // ===== CONFIGURATION =====
 // IMPORTANT: Replace this with your deployed Google Apps Script URL
 // To get this URL: Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9WHu9aKgfDwME7kXbyvsT3pTl5RlOhpZYXfxfCUdlriKYPv_4ww1rKjliEzLvhvSL/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxMcLWzFEwR8Gs7Vg5qp5hXZSCyfTDjAdITyk10NMYLmdVziujZrCdnleuDlRWwDXx/exec';
 
 // ===== CONSTANTS =====
 const HOUSES = ['Compassion','Courage','Honesty','Loyalty','Truth'];
@@ -2039,7 +2064,7 @@ let currentUser = null;
 let users = [];
 
 // ===== MONTHLY STATE =====
-let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM (unused — kept for compatibility)
 
 // ===== EXCEL IMPORT STATE =====
 let rawExcelData = [];
@@ -2361,111 +2386,44 @@ function getSorted() {
 }
 function getMaxCat(h) { const cats=Object.keys(CATS); let max=0,c=''; cats.forEach(c2=>{const v=getCatTotal(h,c2);if(v>max){max=v;c=c2;}}); return {cat:c,val:max}; }
 
-// ===== MONTHLY HELPERS =====
-function getEntriesForMonth(ym) {
-  return entries.filter(e => e.date && e.date.slice(0, 7) === ym);
+// ===== MONTHLY WINDOW (first Monday of the month → first Monday of the next month) =====
+function firstMondayOfMonth(y, m) {
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  const day = d.getUTCDay();
+  const add = day === 1 ? 0 : (day === 0 ? 1 : 8 - day);
+  return new Date(Date.UTC(y, m - 1, 1 + add));
 }
 
-function getHouseTotalMonth(h, ym) {
-  return getEntriesForMonth(ym).filter(e => e.house === h).reduce((s, e) => s + e.points, 0);
-}
-
-function getCatTotalMonth(h, c, ym) {
-  return getEntriesForMonth(ym).filter(e => e.house === h && e.category === c).reduce((s, e) => s + e.points, 0);
-}
-
-function getSortedMonth(ym) {
-  const arr = HOUSES.map(h => ({ house: h, total: getHouseTotalMonth(h, ym) })).sort((a, b) => b.total - a.total);
-  arr.forEach((h,i) => {
-    if(i === 0 || h.total !== arr[i-1].total) h.rank = i + 1;
-    else h.rank = arr[i-1].rank;
-  });
-  return arr;
-}
-
-function getAvailableMonths() {
-  const months = new Set();
-  entries.forEach(e => {
-    if (e.date) months.add(e.date.slice(0, 7));
-  });
-  return [...months].sort().reverse();
-}
-
-function getMonthLabel(ym) {
-  const [y, m] = ym.split('-');
-  const date = new Date(parseInt(y), parseInt(m) - 1);
-  return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
-
-// ===== ANNOUNCEMENT PLAN (results announced on the 3rd of every month) =====
-const ANNOUNCE_DAY = 3;
-
-function announceDateOf(ym) {
-  const [y, m] = ym.split('-').map(Number);
-  return new Date(y, m, ANNOUNCE_DAY);
-}
-
-function isAnnounced(ym) {
-  return new Date() >= announceDateOf(ym);
-}
-
-function monthStatus(ym) {
-  const now = new Date();
-  const [y, m] = ym.split('-').map(Number);
-  if (now >= announceDateOf(ym)) return 'announced';
-  if (now < new Date(y, m - 1, 1)) return 'upcoming';
-  return 'in-progress';
-}
-
-function getLatestAnnouncedMonth() {
-  return getAvailableMonths().find(ym => isAnnounced(ym)) || null;
-}
-
-function getNextAnnouncement() {
-  const now = new Date();
-  const next = new Date(now.getFullYear(), now.getMonth(), ANNOUNCE_DAY);
-  if (now > next) next.setMonth(next.getMonth() + 1);
-  const days = Math.ceil((next - now) / 86400000);
-  return { date: next, days };
-}
-
-function renderAnnouncementBanner() {
-  const banner = document.getElementById('announcementBanner');
-  if (!banner) return;
-  const status = monthStatus(currentMonth);
-  const announceLabel = announceDateOf(currentMonth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  const next = getNextAnnouncement();
-  const nextLabel = next.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  const daysText = next.days === 1 ? 'tomorrow' : `in ${next.days} days`;
-
-  let badgeHtml, msg;
-  if (status === 'announced') {
-    badgeHtml = '<span class="announcement-badge badge-announced">✓ Announced</span>';
-    msg = `${getMonthLabel(currentMonth)} results were announced on ${announceLabel}.`;
-  } else if (status === 'upcoming') {
-    badgeHtml = '<span class="announcement-badge badge-upcoming">Upcoming</span>';
-    msg = `${getMonthLabel(currentMonth)} has not started yet.`;
-  } else {
-    badgeHtml = '<span class="announcement-badge badge-inprogress">In Progress</span>';
-    msg = `${getMonthLabel(currentMonth)} results will be announced on ${announceLabel}.`;
+function getMonthlyWindow(now = new Date()) {
+  // The latest month whose first Monday is on or before today starts the current window.
+  let y = now.getUTCFullYear();
+  let m = now.getUTCMonth() + 1;
+  let start = firstMondayOfMonth(y, m);
+  if (start > now) {
+    m--;
+    if (m < 1) { m = 12; y--; }
+    start = firstMondayOfMonth(y, m);
   }
-
-  banner.innerHTML = `${badgeHtml}<span>${msg}</span><span class="announcement-countdown">📣 Next announcement: ${nextLabel} (${daysText})</span>`;
+  let ey = y, em = m + 1;
+  if (em > 12) { em = 1; ey++; }
+  const end = firstMondayOfMonth(ey, em);
+  return { start, end };
 }
 
-function changeMonth(delta) {
-  const parts = currentMonth.split('-');
-  let y = parseInt(parts[0]);
-  let m = parseInt(parts[1]) + delta;
-  if (m < 1) { m = 12; y--; }
-  if (m > 12) { m = 1; y++; }
-  currentMonth = `${y}-${String(m).padStart(2, '0')}`;
-  renderMonthlyStats();
+function getEntriesForWindow(win) {
+  const startStr = win.start.toISOString().slice(0, 10);
+  const endStr = win.end.toISOString().slice(0, 10);
+  return entries.filter(e => {
+    if (!e.date) return false;
+    const d = e.date.slice(0, 10);
+    return d >= startStr && d < endStr;
+  });
 }
 
-function selectMonth(ym) {
-  currentMonth = ym;
-  renderMonthlyStats();
+function monthlyWindowLabel(win) {
+  const fmt = (d, withYear) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}) });
+  const sameYear = win.start.getUTCFullYear() === win.end.getUTCFullYear();
+  return sameYear ? `${fmt(win.start, false)} – ${fmt(win.end, true)}` : `${fmt(win.start, true)} – ${fmt(win.end, true)}`;
 }
 function calcPoints(cat,sub,pos) {
   if(cat==='Sports'&&SPORTS_PTS[sub]) return SPORTS_PTS[sub][pos-1]||0;
@@ -2546,11 +2504,17 @@ function renderDashboard() {
 }
 
 function renderHouseDetails() {
-  const sorted = getCategoryRankedStandings();
-  const cats = Object.keys(CATS);
-  const maxPts = Math.max(...sorted.map(s => s.total), 1);
+  renderHouseDetailsFor(getCategoryRankedStandings(), 'houseDetails', { showButton: true });
+  renderAcademicSummary();
+}
 
-  document.getElementById('houseDetails').innerHTML = sorted.map((h) => {
+function renderHouseDetailsFor(standings, containerId, opts = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const cats = Object.keys(CATS);
+  const maxPts = Math.max(...standings.map(s => s.total), 1);
+
+  container.innerHTML = standings.map((h) => {
     const rankLabels = ['🥇','🥈','🥉','4th','5th'];
     const rankColors = ['rgba(251,191,36,0.25);color:#b45309','rgba(148,163,184,0.4);color:#64748b','rgba(245,158,11,0.25);color:#b45309','rgba(148,163,184,0.15);color:#64748b','rgba(148,163,184,0.15);color:#64748b'];
     const badge = rankLabels[h.rank-1] || '#' + h.rank;
@@ -2576,17 +2540,20 @@ function renderHouseDetails() {
         </div>
         <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
         <div class="category-bars">${bars}</div>
-        ${entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
+        ${opts.showButton && entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
   }).join('');
-  renderAcademicSummary();
 }
 
 function renderHouseEventsTable() {
-  const container = document.getElementById('houseEventsTableContainer');
+  renderHouseEventsTableFor(entries, 'houseEventsTableContainer', { tableId: 'houseEventsTable', acadCumulative: true });
+}
+
+function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
+  const container = document.getElementById(containerId);
   if (!container) return;
 
-  const houses = getSorted().filter(h => entries.some(e => e.house === h.house) || getAcadPoints(h.house) !== 0).map(h => h.house);
+  const houses = getSorted().filter(h => entriesArr.some(e => e.house === h.house) || (opts.acadCumulative && getAcadPoints(h.house) !== 0)).map(h => h.house);
   if (houses.length === 0) {
     container.innerHTML = `<div class="monthly-empty"><div class="monthly-empty-icon">📋</div><div style="font-weight:700;margin-bottom:4px">No events yet</div><div style="color:var(--muted)">Add points to see the comparative event summary</div></div>`;
     return;
@@ -2594,7 +2561,7 @@ function renderHouseEventsTable() {
 
   // Group entries by category + subCategory + event (Academics handled separately via final points)
   const groups = new Map();
-  entries.forEach(e => {
+  entriesArr.forEach(e => {
     if (e.category === 'Academics') return;
     const key = [e.category || '', e.subCategory || '', e.event || ''].join('|');
     if (!groups.has(key)) groups.set(key, { category: e.category, subCategory: e.subCategory, event: e.event || '', items: [] });
@@ -2609,18 +2576,19 @@ function renderHouseEventsTable() {
   });
 
   // Academics overall cumulative points row (replaces grade-wise academic entries in the summary)
+  const acadVals = h => opts.acadCumulative ? getAcadCumulative(h) : entriesArr.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
   const acadRow = {
     category: 'Academics',
     subCategory: '',
     event: 'Overall Cumulative',
     items: [],
-    houseVals: houses.map(h => getAcadCumulative(h))
+    houseVals: houses.map(acadVals)
   };
   rows.unshift(acadRow);
 
   const pt = (house, items) => items.filter(e => e.house === house).reduce((s, e) => s + e.points, 0);
 
-  let html = `<table class="comparison-table" id="houseEventsTable">
+  let html = `<table class="comparison-table" id="${opts.tableId || 'houseEventsTable'}">
     <thead><tr>
       <th>Category</th>
       <th>Event</th>
@@ -2635,7 +2603,7 @@ function renderHouseEventsTable() {
   const closeCat = () => {
     if (prevCat === null) return;
     // Read this category's re-ranked points from the shared Comparative Event Summary computation
-    const cr = computeCategoryRankPoints();
+    const cr = computeCategoryRankPointsFor(entriesArr, opts);
     const assigned = cr.ranked[prevCat] || {};
     const raw = cr.raw[prevCat] || {};
     const scale = CATEGORY_PTS[prevCat] || CATS[prevCat]?.points || [];
@@ -2691,11 +2659,19 @@ function renderHouseEventsTable() {
 }
 
 function printHouseEvents() {
-  const tableHtml = document.getElementById('houseEventsTable').outerHTML;
+  printHouseEventsFor('houseEventsTable', 'House-wise Event Summary');
+}
+
+function printMonthlyHouseEvents() {
+  printHouseEventsFor('monthlyHouseEventsTable', 'Monthly House-wise Event Summary');
+}
+
+function printHouseEventsFor(tableId, title) {
+  const tableHtml = document.getElementById(tableId).outerHTML;
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
   const theme = localStorage.getItem('vivaTheme') || 'classic';
-  w.document.write(`<!DOCTYPE html><html><head><title>House-wise Event Summary</title>
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
       h1 { font-size: 22px; margin: 0 0 6px; }
@@ -2706,7 +2682,7 @@ function printHouseEvents() {
       tr:has(td[colspan]) td { font-weight: 700; background: #f1f5f9; }
       @media print { .no-print { display: none; } }
     </style></head><body>
-    <h1>House-wise Event Summary</h1>
+    <h1>${title}</h1>
     <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
     ${tableHtml}
   </body></html>`);
@@ -2895,10 +2871,16 @@ function getAcadCumulative(h) {
 let categoryRankCache = null;
 function computeCategoryRankPoints() {
   if (categoryRankCache) return categoryRankCache;
-  const houses = getSorted().filter(h => entries.some(e => e.house === h.house) || getAcadPoints(h.house) !== 0).map(h => h.house);
+  categoryRankCache = computeCategoryRankPointsFor(entries, { acadCumulative: true });
+  return categoryRankCache;
+}
+
+function computeCategoryRankPointsFor(windowEntries, opts = {}) {
+  const acadCumulative = !!opts.acadCumulative;
+  const houses = getSorted().filter(h => windowEntries.some(e => e.house === h.house) || (acadCumulative && getAcadPoints(h.house) !== 0)).map(h => h.house);
   const raw = {};
   Object.keys(CATS).forEach(cat => { raw[cat] = {}; houses.forEach(h => raw[cat][h] = 0); });
-  entries.forEach(e => {
+  windowEntries.forEach(e => {
     if(e.category === 'Academics') return;
     if(raw[e.category] && raw[e.category][e.house] !== undefined) raw[e.category][e.house] += e.points || 0;
   });
@@ -2906,7 +2888,9 @@ function computeCategoryRankPoints() {
   const rank = {};
   Object.keys(CATS).forEach(cat => {
     const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
-    if(cat === 'Academics') houses.forEach(h => raw[cat][h] = getAcadCumulative(h));
+    if(cat === 'Academics') {
+      houses.forEach(h => raw[cat][h] = acadCumulative ? getAcadCumulative(h) : windowEntries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0));
+    }
     const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
       .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
     // Standard competition ranking: equal subtotals share the same position and points,
@@ -2930,14 +2914,17 @@ function computeCategoryRankPoints() {
       rank[cat][h] = rankMap[h];
     });
   });
-  categoryRankCache = { houses, ranked, raw, rank };
-  return categoryRankCache;
+  return { houses, ranked, raw, rank };
 }
 
 // Standings built from the Comparative Event Summary's re-ranked category points.
 // Total = sum of the per-category ranked points; used by the Dashboard and House Details cards.
 function getCategoryRankedStandings() {
-  const rp = computeCategoryRankPoints();
+  return getCategoryRankedStandingsFor(entries, { acadCumulative: true });
+}
+
+function getCategoryRankedStandingsFor(windowEntries, opts = {}) {
+  const rp = computeCategoryRankPointsFor(windowEntries, opts);
   const cats = Object.keys(CATS);
   const arr = rp.houses.map(house => {
     const byCat = {};
@@ -3407,127 +3394,12 @@ function renderFromAcadWithStudentData(container, acadEntries) {
 }
 
 function renderMonthlyStats() {
-  const monthEntries = getEntriesForMonth(currentMonth);
-  const sorted = getSortedMonth(currentMonth);
-  const maxPts = Math.max(...sorted.map(s => s.total), 1);
-  const cats = Object.keys(CATS);
-
-  // Update month display
-  document.getElementById('monthDisplay').textContent = getMonthLabel(currentMonth);
-
-  // Announcement banner
-  renderAnnouncementBanner();
-
-  // Render month picker chips
-  const available = getAvailableMonths();
-  const allMonths = [];
-  if (entries.length > 0) {
-    const dates = entries.map(e => e.date).filter(Boolean).sort();
-    const earliest = dates[0].slice(0, 7);
-    const latest = dates[dates.length - 1].slice(0, 7);
-    let [ey, em] = earliest.split('-').map(Number);
-    const [ly, lm] = latest.split('-').map(Number);
-    while (ey < ly || (ey === ly && em <= lm)) {
-      allMonths.push(`${ey}-${String(em).padStart(2, '0')}`);
-      em++;
-      if (em > 12) { em = 1; ey++; }
-    }
-  }
-  if (allMonths.length === 0) allMonths.push(currentMonth);
-
-  document.getElementById('monthPicker').innerHTML = allMonths.map(ym => {
-    const hasData = available.includes(ym);
-    const isActive = ym === currentMonth;
-    const st = monthStatus(ym);
-    const chipClass = st === 'announced' ? 'chip-announced' : st === 'in-progress' ? 'chip-inprogress' : '';
-    const chipBadge = st === 'announced' ? '<span class="chip-status">✓</span>' : st === 'in-progress' ? '<span class="chip-status">◔</span>' : '';
-    return `<button class="month-chip ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''} ${chipClass}" onclick="selectMonth('${ym}')">${getMonthLabel(ym)}${chipBadge}</button>`;
-  }).join('');
-
-  if (monthEntries.length === 0) {
-    document.getElementById('monthlyPodium').innerHTML = '';
-    document.getElementById('monthlyStatsGrid').innerHTML = '';
-    document.getElementById('monthlyComparisonTable').innerHTML = '';
-    document.getElementById('monthlyHistoryBody').innerHTML = `<tr><td colspan="7"><div class="monthly-empty"><div class="monthly-empty-icon">📅</div><div style="font-weight:700;margin-bottom:4px">No entries for ${getMonthLabel(currentMonth)}</div><div style="color:var(--muted)">Add points or select a different month</div></div></td></tr>`;
-    return;
-  }
-
-  // Monthly podium
-  const podiumRanks = [1, 2, 3];
-  const podiumOrder = [];
-  let prevTotal = null, prevRank = 0;
-  const ranks = [];
-  sorted.forEach((s, i) => {
-    if (s.total !== prevTotal) { prevRank = i + 1; prevTotal = s.total; }
-    ranks.push(prevRank);
-  });
-  podiumRanks.forEach(r => {
-    sorted.forEach((s, i) => {
-      if (ranks[i] === r) podiumOrder.push({ ...s, rank: r });
-    });
-  });
-
-  const spotClasses = ['spot-1', 'spot-2', 'spot-3'];
-  const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
-
-  document.getElementById('monthlyPodium').innerHTML = podiumOrder.map(item => {
-    const catBreakdown = cats.map(c =>
-      `<div class="podium-cat"><span>${CAT_LABELS[c] || c}</span><span>${getCatTotalMonth(item.house, c, currentMonth)}</span></div>`
-    ).join('');
-    return `
-      <div class="podium-spot ${spotClasses[item.rank - 1]}">
-        <div class="medal">${medals[item.rank]}</div>
-        <div class="podium-house-name" style="color:${HCOLOR[item.house]}">${item.house}</div>
-        <div class="podium-points">${item.total}</div>
-        <div class="podium-points-label">Points in ${getMonthLabel(currentMonth).split(' ')[0]}</div>
-        <div class="podium-bar" style="width:${(item.total / maxPts) * 100}%;background:${HCOLOR[item.house]}"></div>
-        <div class="podium-categories">${catBreakdown}</div>
-      </div>`;
-  }).join('');
-
-  // Monthly stats cards
-  document.getElementById('monthlyStatsGrid').innerHTML = sorted.map((h, i) => {
-    const best = cats.reduce((b, c) => {
-      const v = getCatTotalMonth(h.house, c, currentMonth);
-      return v > b.val ? { cat: c, val: v } : b;
-    }, { cat: '-', val: 0 });
-    return `
-      <div class="stat-box">
-        <div class="stat-house" style="color:${HCOLOR[h.house]}">${h.house}</div>
-        <div class="stat-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
-        <div class="stat-bar">
-          <div class="stat-bar-fill" style="width:${(h.total / maxPts) * 100}%;background:${HCOLOR[h.house]}"></div>
-        </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">Best: ${CAT_LABELS[best.cat] || best.cat} (${best.val})</div>
-      </div>`;
-  }).join('');
-
-  // Monthly comparison table
-  let tableHtml = `<thead><tr><th>#</th><th>House</th>${cats.map(c => `<th style="color:${CAT_COLOR_DARK[c] || CATS[c].color}">${CAT_LABELS[c] || c}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
-  sorted.forEach((h) => {
-    const rankBadge = h.rank === 1 ? 'rank-1' : h.rank === 2 ? 'rank-2' : h.rank === 3 ? 'rank-3' : '';
-    tableHtml += `<tr>
-      <td><span class="rank-badge ${rankBadge}">${h.rank}</span></td>
-      <td><span class="house-tag" style="background:${HBGCOLOR[h.house]};color:${HCOLOR[h.house]}">${h.house}</span></td>
-      ${cats.map(c => `<td style="color:${CATS[c].color};font-weight:600">${getCatTotalMonth(h.house, c, currentMonth)}</td>`).join('')}
-      <td class="cell-total" style="color:${HCOLOR[h.house]}">${h.total}</td>
-    </tr>`;
-  });
-  tableHtml += '</tbody>';
-  document.getElementById('monthlyComparisonTable').innerHTML = tableHtml;
-
-  // Monthly entry log
-  const sortedEntries = [...monthEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
-  document.getElementById('monthlyHistoryBody').innerHTML = sortedEntries.map(e => `
-    <tr>
-      <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-      <td><span class="house-tag" style="background:${HBGCOLOR[e.house]};color:${HCOLOR[e.house]}">${e.house}</span></td>
-      <td>${CAT_LABELS[e.category] || e.category}</td>
-      <td style="color:var(--muted)">${e.subCategory || '-'}</td>
-      <td>${e.event || '-'}</td>
-      <td class="${e.points >= 0 ? 'points-positive' : 'points-negative'}">${e.points >= 0 ? '+' : ''}${e.points}</td>
-      <td style="color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || ''}</td>
-    </tr>`).join('');
+  const win = getMonthlyWindow();
+  const label = document.getElementById('monthlyWindowLabel');
+  if (label) label.textContent = `Window: ${monthlyWindowLabel(win)}`;
+  const winEntries = getEntriesForWindow(win);
+  renderHouseDetailsFor(getCategoryRankedStandingsFor(winEntries), 'monthlyHouseDetails', {});
+  renderHouseEventsTableFor(winEntries, 'monthlyHouseEventsTableContainer', { tableId: 'monthlyHouseEventsTable' });
 }
 
 function renderAwards() {
@@ -3649,7 +3521,7 @@ function renderHistory() {
       <td>${e.event||'-'}</td>
       <td class="${e.points>=0?'points-positive':'points-negative'}">${e.points>=0?'+':''}${e.points}</td>
       <td style="color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note||''}</td>
-      <td>${isAdmin() ? `<button class="delete-btn" onclick="deleteEntry('${e.id}')" title="Delete">🗑️</button>` : ''}</td>
+      <td>${isAdmin() ? `<span class="row-actions"><button class="delete-btn" onclick="openEditEntry('${e.id}')" title="Edit">✏️</button><button class="delete-btn" onclick="deleteEntry('${e.id}')" title="Delete">🗑️</button></span>` : ''}</td>
     </tr>`).join('');
 }
 
@@ -3677,30 +3549,30 @@ function populateSelects() {
   });
 }
 
-function updateAddSub() {
-  const cat = document.getElementById('addCategory').value;
+function updateAddSub(prefix='add') {
+  const cat = document.getElementById(prefix+'Category').value;
   const subs = CATS[cat].subs;
-  document.getElementById('addSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
-  updateAddPositions();
-  updateAddPoints();
+  document.getElementById(prefix+'SubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  updateAddPositions(prefix);
+  updateAddPoints(prefix);
 }
 
-function updateAddPositions() {
-  const sub = document.getElementById('addSubCategory').value;
+function updateAddPositions(prefix='add') {
+  const sub = document.getElementById(prefix+'SubCategory').value;
   const labels = ['District','State','National'].includes(sub)
     ? ['1st Place','2nd Place','3rd Place','Participation']
     : ['1st Place','2nd Place','3rd Place','4th Place','5th Place'];
-  document.getElementById('addPosition').innerHTML = labels.map((l,i)=>`<option value="${i+1}">${l}</option>`).join('');
+  document.getElementById(prefix+'Position').innerHTML = labels.map((l,i)=>`<option value="${i+1}">${l}</option>`).join('');
 }
 
-function updateAddPoints() {
-  const cat = document.getElementById('addCategory').value;
-  const sub = document.getElementById('addSubCategory').value;
-  const pos = parseInt(document.getElementById('addPosition').value);
+function updateAddPoints(prefix='add') {
+  const cat = document.getElementById(prefix+'Category').value;
+  const sub = document.getElementById(prefix+'SubCategory').value;
+  const pos = parseInt(document.getElementById(prefix+'Position').value);
   const pts = calcPoints(cat, sub, pos);
-  document.getElementById('addPoints').placeholder = pts !== 0 ? `Auto: ${pts}` : 'Enter custom points';
-  document.getElementById('addPoints').value = '';
-  document.getElementById('addPointsHelper').textContent = pts !== 0 ? `Points auto-calculated: ${pts}` : 'Custom points required for this selection';
+  document.getElementById(prefix+'Points').placeholder = pts !== 0 ? `Auto: ${pts}` : 'Enter custom points';
+  document.getElementById(prefix+'Points').value = '';
+  document.getElementById(prefix+'PointsHelper').textContent = pts !== 0 ? `Points auto-calculated: ${pts}` : 'Custom points required for this selection';
 }
 
 function updateBulkSub() {
@@ -3781,6 +3653,71 @@ async function saveEntry() {
     showToast(`+${points} points added to ${house}`,'success');
   } catch(err) {
     showToast('Failed to save: ' + err.message, 'error');
+  }
+}
+
+let editingEntryId = null;
+
+function openEditEntry(id) {
+  const entry = entries.find(e => e.id === id);
+  if(!entry) return;
+  editingEntryId = id;
+
+  document.getElementById('editHouse').innerHTML = HOUSES.map(h=>`<option value="${h}">${h}</option>`).join('');
+  document.getElementById('editHouse').value = entry.house;
+
+  const catKeys = Object.keys(CATS);
+  document.getElementById('editCategory').innerHTML = catKeys.map(c=>`<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
+  document.getElementById('editCategory').value = entry.category;
+
+  const subs = [...CATS[entry.category].subs];
+  if(entry.subCategory && !subs.includes(entry.subCategory)) subs.unshift(entry.subCategory);
+  document.getElementById('editSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById('editSubCategory').value = entry.subCategory || '';
+
+  const sub = document.getElementById('editSubCategory').value;
+  const isLevel = ['District','State','National'].includes(sub);
+  let positions = isLevel ? [1,2,3,4] : [1,2,3,4,5];
+  const pos = Number(entry.position) || 1;
+  if(!positions.includes(pos)) positions.push(pos);
+  positions.sort((a,b)=>a-b);
+  const posLabel = p => p === 4 && isLevel ? 'Participation' : (['1st','2nd','3rd','4th','5th'][p-1] || p+'th') + ' Place';
+  document.getElementById('editPosition').innerHTML = positions.map(p=>`<option value="${p}">${posLabel(p)}</option>`).join('');
+  document.getElementById('editPosition').value = String(pos);
+
+  document.getElementById('editPoints').value = entry.points;
+  document.getElementById('editPointsHelper').textContent = `Current points: ${entry.points}`;
+  document.getElementById('editEvent').value = entry.event || '';
+  document.getElementById('editNote').value = entry.note || '';
+
+  document.getElementById('editModal').classList.add('active');
+}
+
+async function saveEditEntry() {
+  const entry = entries.find(e => e.id === editingEntryId);
+  if(!entry) return;
+  const house = document.getElementById('editHouse').value;
+  const category = document.getElementById('editCategory').value;
+  const subCategory = document.getElementById('editSubCategory').value;
+  const position = parseInt(document.getElementById('editPosition').value);
+  const pointsRaw = document.getElementById('editPoints').value;
+  const event = document.getElementById('editEvent').value;
+  const note = document.getElementById('editNote').value;
+  const points = pointsRaw !== '' ? parseInt(pointsRaw) : calcPoints(category, subCategory, position);
+
+  if(points === null || isNaN(points)) { showToast('Please enter valid points','error'); return; }
+
+  const updated = { ...entry, house, category, subCategory, position, points, event, note };
+  try {
+    showSaving();
+    await apiPost({action: 'updateEntry', entry: updated});
+    Object.assign(entry, updated);
+    closeModal('edit');
+    render();
+    showSaved();
+    showToast(`Updated ${house} entry to ${points} points`,'success');
+  } catch(err) {
+    showToast('Failed to update: ' + err.message, 'error');
   }
 }
 
@@ -4174,10 +4111,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(activeView+'View').classList.add('active');
     renderNavTabs();
-    if (activeView === 'monthly') {
-      const latest = getLatestAnnouncedMonth();
-      if (latest) { currentMonth = latest; renderMonthlyStats(); }
-    }
+    if (activeView === 'monthly') renderMonthlyStats();
   });
 });
 

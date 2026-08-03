@@ -66,6 +66,8 @@ function doPost(e) {
         return jsonResponse(addEntries(data.entries));
       case 'addStudents':
         return jsonResponse(addStudents(data.students));
+      case 'updateEntry':
+        return jsonResponse(updateEntry(data.entry));
       case 'deleteEntry':
         return jsonResponse(deleteEntry(data.id));
       case 'deleteEntries':
@@ -224,6 +226,31 @@ function deleteEntry(id) {
   for(let i = 1; i < data.length; i++) {
     if(data[i][0] === id) {
       sheet.deleteRow(i + 1);
+      return {success: true};
+    }
+  }
+  
+  return {success: false, error: 'Entry not found'};
+}
+
+function updateEntry(entry) {
+  const sheet = getSheet(SHEET_NAME_ENTRIES);
+  const data = sheet.getDataRange().getValues();
+  
+  for(let i = 1; i < data.length; i++) {
+    if(data[i][0] === entry.id) {
+      sheet.getRange(i + 1, 1, 1, 10).setValues([[
+        entry.id,
+        entry.house,
+        entry.category,
+        entry.subCategory || '',
+        entry.position || 0,
+        entry.points,
+        entry.event || '',
+        entry.note || '',
+        entry.date || data[i][8],
+        entry.exam || data[i][9]
+      ]]);
       return {success: true};
     }
   }

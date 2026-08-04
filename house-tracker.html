@@ -2846,7 +2846,7 @@ function computeAcademicRanking() {
   // Secondary source: studentData averages per grade + exam.
   // Merged with the entry-based cells so previously imported student data (e.g. older
   // exam files that only exist as student rows) stays visible after a new Excel import.
-  // Only fills grade+exam keys NOT covered by "Avg:" entries to avoid double counting.
+  // Fills houses within a key that have no entry-based data (instead of skipping entire keys).
   if(studentData && studentData.length > 0) {
     studentData.forEach(s => {
       const g = gradeOf(s.cls);
@@ -2854,11 +2854,12 @@ function computeAcademicRanking() {
       if(!HOUSES.includes(s.house)) return;
       const exam = s.exam || 'General';
       const key = g + '|' + exam;
-      if(entryKeys.has(key)) return;
+      if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: null, houses: {} };
+      if(cells[key].houses[s.house]) return;
       found = true;
       const cl = commonLabels[exam] || singleCommonLabel || deriveCommonLabel(exam, g);
-      if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
-      if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
+      if(!cells[key].commonLabel) cells[key].commonLabel = cl || null;
+      cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       const d = cells[key].houses[s.house];
       d.avgSum += s.total || 0;
       d.count++;

@@ -2852,13 +2852,6 @@ function computeAcademicRanking() {
     Object.keys(cell.houses).forEach(h => primaryHouses.add(k + '|' + h));
   });
 
-  console.log('[ACAD-RANK] entries:', entries.filter(e=>e.category==='Academics').length, 'studentData:', studentData?.length);
-  console.log('[ACAD-RANK] primaryHouses:', [...primaryHouses]);
-  console.log('[ACAD-RANK] studentData houses:', [...new Set((studentData||[]).map(s=>s.house))]);
-  console.log('[ACAD-RANK] studentData exams:', [...new Set((studentData||[]).map(s=>s.exam))]);
-  console.log('[ACAD-RANK] studentData sample:', (studentData||[]).slice(0,5));
-  console.log('[ACAD-RANK] entries sample:', entries.filter(e=>e.category==='Academics').slice(0,5));
-
   if(studentData && studentData.length > 0) {
     studentData.forEach(s => {
       const g = gradeOf(s.cls);
@@ -2877,11 +2870,6 @@ function computeAcademicRanking() {
       d.count++;
     });
   }
-
-  console.log('[ACAD-RANK] final cells keys:', Object.keys(cells));
-  Object.entries(cells).forEach(([k,v]) => {
-    console.log('[ACAD-RANK] cell', k, 'houses:', Object.keys(v.houses), 'commonLabel:', v.commonLabel);
-  });
 
   if(!found) {
     acadRankingCache = { hasData: false, cells: [], cumulative: {}, finalRank: {}, finalPoints: {} };

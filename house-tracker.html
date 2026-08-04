@@ -2852,6 +2852,13 @@ function computeAcademicRanking() {
     Object.keys(cell.houses).forEach(h => primaryHouses.add(k + '|' + h));
   });
 
+  console.log('[RANK] studentData total:', studentData ? studentData.length : 0);
+  console.log('[RANK] studentData houses:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.house)))]));
+  console.log('[RANK] studentData exams:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.exam)))]));
+  console.log('[RANK] studentData cls values:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.cls)))]));
+  console.log('[RANK] Honesty students:', JSON.stringify((studentData||[]).filter(s=>s.house==='Honesty').map(s=>({name:s.name,cls:s.cls,exam:s.exam,total:s.total})).slice(0,20)));
+  console.log('[RANK] primaryHouses:', JSON.stringify([...primaryHouses]));
+
   if(studentData && studentData.length > 0) {
     studentData.forEach(s => {
       const g = gradeOf(s.cls);
@@ -2870,6 +2877,11 @@ function computeAcademicRanking() {
       d.count++;
     });
   }
+
+  console.log('[RANK] final cells:', JSON.stringify(Object.keys(cells)));
+  Object.entries(cells).forEach(([k,v]) => {
+    console.log('[RANK] cell', k, 'houses:', JSON.stringify(Object.keys(v.houses)));
+  });
 
   if(!found) {
     acadRankingCache = { hasData: false, cells: [], cumulative: {}, finalRank: {}, finalPoints: {} };

@@ -2852,7 +2852,7 @@ function computeAcademicRanking() {
     Object.keys(cell.houses).forEach(h => primaryHouses.add(k + '|' + h));
   });
 
-  console.log('[RANK] studentData total:', studentData ? studentData.length : 0);
+  console.log('[RANK] DEBUG-VERSION=20260804-FIX1 studentData total:', studentData ? studentData.length : 0);
   console.log('[RANK] studentData houses:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.house)))]));
   console.log('[RANK] studentData exams:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.exam)))]));
   console.log('[RANK] studentData cls values:', JSON.stringify([...(new Set((studentData||[]).map(s=>s.cls)))]));

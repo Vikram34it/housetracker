@@ -571,15 +571,6 @@
   }
 
   .card:hover { border-color: rgba(56,189,248,0.2); }
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.2), transparent);
-  }
-
-  .card:hover { border-color: rgba(56,189,248,0.2); }
 
   /* PODIUM */
   .podium-section { margin-bottom: 40px; }
@@ -2028,6 +2019,14 @@ function gradeOf(v) {
   return (g >= 6 && g <= 12) ? g : null;
 }
 
+// Coerce any value to a finite number. Protects Dashboard / House Details / Awards /
+// History against legacy '-' / empty / NaN cells in the sheet, which would otherwise
+// turn house totals into strings/NaN and break ranking and bar widths.
+function pts(v) {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
 // ===== API HELPERS =====
 async function apiGet(action, params = {}) {
   const url = new URL(APPS_SCRIPT_URL);
@@ -2376,12 +2375,12 @@ async function restoreBackup(event) {
 // ===== HELPERS =====
 function getHouseTotal(h) {
   const academic = getAcadPoints(h);
-  const rest = entries.filter(e => e.house === h && e.category !== 'Academics').reduce((s, e) => s + e.points, 0);
-  return academic + rest;
+  const rest = entries.filter(e => e.house === h && e.category !== 'Academics').reduce((s, e) => s + pts(e.points), 0);
+  return pts(academic) + pts(rest);
 }
 function getCatTotal(h, c) {
-  if(c === 'Academics') return getAcadPoints(h);
-  return entries.filter(e => e.house === h && e.category === c).reduce((s, e) => s + e.points, 0);
+  if(c === 'Academics') return pts(getAcadPoints(h));
+  return entries.filter(e => e.house === h && e.category === c).reduce((s, e) => s + pts(e.points), 0);
 }
 function getSorted() {
   const arr = HOUSES.map(h=>({house:h,total:getHouseTotal(h)})).sort((a,b)=>b.total-a.total);
@@ -2638,7 +2637,7 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
   });
 
   // Academics overall cumulative points row (replaces grade-wise academic entries in the summary)
-  const acadVals = h => opts.acadCumulative ? getAcadCumulative(h) : entriesArr.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
+  const acadVals = h => opts.acadCumulative ? pts(getAcadCumulative(h)) : entriesArr.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
   const acadRow = {
     category: 'Academics',
     subCategory: '',
@@ -2648,7 +2647,7 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
   };
   rows.unshift(acadRow);
 
-  const pt = (house, items) => items.filter(e => e.house === house).reduce((s, e) => s + e.points, 0);
+  const pt = (house, items) => items.filter(e => e.house === house).reduce((s, e) => s + pts(e.points), 0);
 
   let html = `<table class="comparison-table" id="${opts.tableId || 'houseEventsTable'}">
     <thead><tr>
@@ -2823,7 +2822,10 @@ function computeAcademicRanking() {
   const singleCommonLabel = commonLabelValues.length === 1 ? commonLabelValues[0] : null;
 
   // Primary source: academic entries carrying an "Avg:" note (from Excel imports)
-  const entryKeys = new Set();
+  // Track which (key, house) pairs already carry an entry-based class average, so the
+  // student-data source below only fills houses that have NO entry data, but still
+  // averages over ALL students of that house (instead of just the first one).
+  const entryHouseKeys = new Set();
   entries.forEach(e => {
     if(e.category !== 'Academics') return;
     if(!HOUSES.includes(e.house)) return;
@@ -2834,7 +2836,7 @@ function computeAcademicRanking() {
     found = true;
     const exam = e.event || 'General';
     const key = g + '|' + exam;
-    entryKeys.add(key);
+    entryHouseKeys.add(key + '|' + e.house);
     const cl = commonLabels[exam] || singleCommonLabel || deriveCommonLabel(exam, g);
     if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
     if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
@@ -2855,12 +2857,13 @@ function computeAcademicRanking() {
       if(!HOUSES.includes(s.house)) return;
       const exam = s.exam || 'General';
       const key = g + '|' + exam;
+      // Skip houses that already have an entry-based average for this grade+exam.
+      if(entryHouseKeys.has(key + '|' + s.house)) return;
       if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: null, houses: {} };
-      if(cells[key].houses[s.house]) return;
+      if(!cells[key].houses[s.house]) cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       found = true;
       const cl = commonLabels[exam] || singleCommonLabel || deriveCommonLabel(exam, g);
       if(!cells[key].commonLabel) cells[key].commonLabel = cl || null;
-      cells[key].houses[s.house] = { avgSum: 0, count: 0 };
       const d = cells[key].houses[s.house];
       const t = Number(s.total);
       d.avgSum += isNaN(t) ? 0 : t;   // never let '-'/NaN/'' corrupt the house average
@@ -2920,13 +2923,13 @@ function computeAcademicRanking() {
 
 function getAcadPoints(h) {
   const r = computeAcademicRanking();
-  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
+  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
   return r.finalPoints[h] || 0;
 }
 
 function getAcadCumulative(h) {
   const r = computeAcademicRanking();
-  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0);
+  if(!r.hasData) return entries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
   return r.cumulative[h] || 0;
 }
 
@@ -2947,14 +2950,14 @@ function computeCategoryRankPointsFor(windowEntries, opts = {}) {
   Object.keys(CATS).forEach(cat => { raw[cat] = {}; houses.forEach(h => raw[cat][h] = 0); });
   windowEntries.forEach(e => {
     if(e.category === 'Academics') return;
-    if(raw[e.category] && raw[e.category][e.house] !== undefined) raw[e.category][e.house] += e.points || 0;
+    if(raw[e.category] && raw[e.category][e.house] !== undefined) raw[e.category][e.house] += pts(e.points);
   });
   const ranked = {};
   const rank = {};
   Object.keys(CATS).forEach(cat => {
     const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
     if(cat === 'Academics') {
-      houses.forEach(h => raw[cat][h] = acadCumulative ? getAcadCumulative(h) : windowEntries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + e.points, 0));
+      houses.forEach(h => raw[cat][h] = acadCumulative ? pts(getAcadCumulative(h)) : windowEntries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0));
     }
     const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
       .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));
@@ -3115,7 +3118,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
     if(!classEventData[cls][event]) classEventData[cls][event] = {};
     if(!classEventData[cls][event][e.house]) classEventData[cls][event][e.house] = { points: 0, count: 0, avgSum: 0, avgCount: 0 };
     const d = classEventData[cls][event][e.house];
-    d.points += e.points || 0;
+    d.points += pts(e.points);
     d.count++;
     const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
     if(m) { d.avgSum += parseFloat(m[1]); d.avgCount++; }
@@ -3131,7 +3134,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       if(!classExams[cls].includes(exam)) classExams[cls].push(exam);
       if(!studentAvgs[cls]) studentAvgs[cls] = {};
       if(!studentAvgs[cls][s.house]) studentAvgs[cls][s.house] = { total: 0, count: 0 };
-      studentAvgs[cls][s.house].total += s.total || 0;
+      studentAvgs[cls][s.house].total += pts(s.total);
       studentAvgs[cls][s.house].count++;
     });
   }
@@ -3258,7 +3261,7 @@ function renderFromStudentData(container) {
     const cls = gradeOf(s.cls) || 'Unassigned';
     if(!classHouseData[cls]) classHouseData[cls] = {};
     if(!classHouseData[cls][s.house]) classHouseData[cls][s.house] = { total: 0, count: 0 };
-    classHouseData[cls][s.house].total += s.total || 0;
+    classHouseData[cls][s.house].total += pts(s.total);
     classHouseData[cls][s.house].count++;
   });
 
@@ -3327,7 +3330,7 @@ function renderFromAcadEntries(container, acadEntries) {
     if(!eventData[event][e.house]) eventData[event][e.house] = { 
       points: 0, count: 0, avgSum: 0, avgCount: 0 
     };
-    eventData[event][e.house].points += e.points || 0;
+    eventData[event][e.house].points += pts(e.points);
     eventData[event][e.house].count++;
     if(e.note) {
       const m = e.note.match(/Avg:\s*([\d.]+)/i);
@@ -3388,7 +3391,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
     if(!classEventData[cls]) classEventData[cls] = {};
     if(!classEventData[cls][exam]) classEventData[cls][exam] = {};
     if(!classEventData[cls][exam][s.house]) classEventData[cls][exam][s.house] = { total: 0, count: 0 };
-    classEventData[cls][exam][s.house].total += s.total || 0;
+    classEventData[cls][exam][s.house].total += pts(s.total);
     classEventData[cls][exam][s.house].count++;
   });
 
@@ -3506,19 +3509,19 @@ function renderAwards() {
   const sorted = getSorted();
   const cats = Object.keys(CATS);
   const totalEntries = entries.length;
-  const totalPoints = entries.reduce((s,e)=>s+e.points,0);
+  const totalPoints = entries.reduce((s,e)=>s+pts(e.points),0);
 
   // Category leaders
   const catLeaders = cats.map(c => {
     const best = sorted.reduce((b,h) => {
-      const v = getCatTotal(h.house,c);
+      const v = pts(getCatTotal(h.house,c));
       return v > b.val ? {house:h.house,val:v} : b;
     }, {house:'-',val:0});
     return { cat: c, ...best, color: CATS[c].color };
   });
 
   // Best single entry
-  const bestEntry = entries.reduce((b,e) => e.points > (b?.points||0) ? e : b, null);
+  const bestEntry = entries.reduce((b,e) => pts(e.points) > pts(b?.points) ? e : b, null);
 
   // Most active house
   const houseCounts = HOUSES.map(h => ({house:h, count:entries.filter(e=>e.house===h).length}));
@@ -3619,7 +3622,7 @@ function renderHistory() {
       <td>${CAT_LABELS[e.category] || e.category}</td>
       <td style="color:var(--muted)">${e.subCategory||'-'}</td>
       <td>${e.event||'-'}</td>
-      <td class="${e.points>=0?'points-positive':'points-negative'}">${e.points>=0?'+':''}${e.points}</td>
+      <td class="${pts(e.points)>=0?'points-positive':'points-negative'}">${pts(e.points)>=0?'+':''}${pts(e.points)}</td>
       <td style="color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note||''}</td>
       <td>${isAdmin() ? `<span class="row-actions"><button class="delete-btn" onclick="openEditEntry('${e.id}')" title="Edit">✏️</button><button class="delete-btn" onclick="deleteEntry('${e.id}')" title="Delete">🗑️</button></span>` : ''}</td>
     </tr>`).join('');
@@ -4664,7 +4667,7 @@ async function importData() {
       if(!labelExams.has(s.exam)) return;
       if(!HOUSES.includes(s.house)) return;
       if(!houseData[s.house]) houseData[s.house] = { total: 0, count: 0 };
-      houseData[s.house].total += s.total || 0;
+      houseData[s.house].total += pts(s.total);
       houseData[s.house].count++;
     });
 
@@ -4877,7 +4880,7 @@ function renderHouseDetailTable(house, filterCat, filterClass) {
         <td style="padding:7px 10px;border-bottom:1px solid var(--border)"><span style="color:${catColor};font-weight:600">${CAT_LABELS[e.category] || e.category}</span></td>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e.event || '-'}</td>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note || '-'}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${e.points >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700">${e.points >= 0 ? '+' : ''}${e.points}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;color:${pts(e.points) >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700">${pts(e.points) >= 0 ? '+' : ''}${pts(e.points)}</td>
       </tr>`;
     });
     html += '</tbody></table>';
@@ -4936,10 +4939,10 @@ function renderHouseDetailTable(house, filterCat, filterClass) {
   document.getElementById('houseAcadTable').innerHTML = html;
 
   // Summary
-  const totalPts = filteredEntries.reduce((s, e) => s + e.points, 0);
+  const totalPts = filteredEntries.reduce((s, e) => s + pts(e.points), 0);
   const catBreakdown = Object.keys(CATS).map(c => {
-    const pts = filteredEntries.filter(e => e.category === c).reduce((s, e) => s + e.points, 0);
-    return pts > 0 ? `${c}: ${pts}` : null;
+    const ptsCat = filteredEntries.filter(e => e.category === c).reduce((s, e) => s + pts(e.points), 0);
+    return ptsCat > 0 ? `${c}: ${ptsCat}` : null;
   }).filter(Boolean).join(' | ');
   document.getElementById('houseAcadSummary').innerHTML = `Total: ${totalPts} pts | ${filteredEntries.length} entries` + (catBreakdown ? ` | ${catBreakdown}` : '') + (hasStudents ? ` | ${students.length} students` : '');
 }

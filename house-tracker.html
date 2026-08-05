@@ -2638,7 +2638,11 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
   });
 
   // Academics overall cumulative points row (replaces grade-wise academic entries in the summary)
-  const acadVals = h => opts.acadCumulative ? pts(getAcadCumulative(h)) : entriesArr.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
+  const acadVals = h => {
+    if (opts.acadCumulativeValues) return pts(opts.acadCumulativeValues[h]);
+    if (opts.acadCumulative) return pts(getAcadCumulative(h));
+    return entriesArr.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
+  };
   const acadRow = {
     category: 'Academics',
     subCategory: '',
@@ -3506,24 +3510,13 @@ function renderMonthlyStats() {
   } else {
     winEntries = getEntriesForWindow(win);
   }
+  const monthlyAcad = getMonthlyAcademicData(winEntries);
   renderHouseDetailsFor(getCategoryRankedStandingsFor(winEntries), 'monthlyHouseDetails', {});
-  renderHouseEventsTableFor(winEntries, 'monthlyHouseEventsTableContainer', { tableId: 'monthlyHouseEventsTable' });
-  renderMonthlyAcademicSummary();
+  renderHouseEventsTableFor(winEntries, 'monthlyHouseEventsTableContainer', { tableId: 'monthlyHouseEventsTable', acadCumulativeValues: monthlyAcad.ranking.hasData ? monthlyAcad.ranking.cumulative : null });
+  renderMonthlyAcademicSummary(monthlyAcad.ranking);
 }
 
-function renderMonthlyAcademicSummary() {
-  const container = document.getElementById('monthlyAcademicSummaryContainer');
-  if (!container) return;
-
-  // Only academic data that falls inside the currently selected month window.
-  let winEntries;
-  if (currentWindowKey === 'all') {
-    winEntries = entries;
-  } else {
-    const win = getWindowForKey(currentWindowKey);
-    winEntries = getEntriesForWindow(win);
-  }
-
+function getMonthlyAcademicData(winEntries) {
   // Restrict student rows to those imported in the same window (via their date).
   let winStudents = [];
   if (studentData && studentData.length > 0) {
@@ -3540,9 +3533,14 @@ function renderMonthlyAcademicSummary() {
       });
     }
   }
+  return { ranking: computeAcademicRankingData(winEntries, winStudents) };
+}
 
-  const ranking = computeAcademicRankingData(winEntries, winStudents);
-  if (ranking.hasData) {
+function renderMonthlyAcademicSummary(ranking) {
+  const container = document.getElementById('monthlyAcademicSummaryContainer');
+  if (!container) return;
+
+  if (ranking && ranking.hasData) {
     renderAcademicRankingTable(container, ranking);
   } else {
     container.innerHTML = '';

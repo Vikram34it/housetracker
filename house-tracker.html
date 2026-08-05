@@ -1550,6 +1550,7 @@
     </div>
     <div class="month-picker" id="monthPicker"></div>
     <div class="house-detail-grid" id="monthlyHouseDetails"></div>
+    <div id="monthlyAcademicSummaryContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
         <div class="section-title">Comparative Event Summary</div>
@@ -3503,6 +3504,18 @@ function renderMonthlyStats() {
   }
   renderHouseDetailsFor(getCategoryRankedStandingsFor(winEntries), 'monthlyHouseDetails', {});
   renderHouseEventsTableFor(winEntries, 'monthlyHouseEventsTableContainer', { tableId: 'monthlyHouseEventsTable' });
+  renderMonthlyAcademicSummary();
+}
+
+function renderMonthlyAcademicSummary() {
+  const container = document.getElementById('monthlyAcademicSummaryContainer');
+  if (!container) return;
+  const ranking = computeAcademicRanking();
+  if (ranking.hasData) {
+    renderAcademicRankingTable(container, ranking);
+  } else {
+    container.innerHTML = '';
+  }
 }
 
 function renderAwards() {

@@ -2985,7 +2985,11 @@ function computeCategoryRankPointsFor(windowEntries, opts = {}) {
   Object.keys(CATS).forEach(cat => {
     const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
     if(cat === 'Academics') {
-      houses.forEach(h => raw[cat][h] = acadCumulative ? pts(getAcadCumulative(h)) : windowEntries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0));
+      houses.forEach(h => {
+        if(opts.acadCumulativeValues) raw[cat][h] = pts(opts.acadCumulativeValues[h]);
+        else if(acadCumulative) raw[cat][h] = pts(getAcadCumulative(h));
+        else raw[cat][h] = windowEntries.filter(e => e.house === h && e.category === 'Academics').reduce((s, e) => s + pts(e.points), 0);
+      });
     }
     const order = houses.map(h => ({ house: h, total: raw[cat][h] || 0 }))
       .sort((a, b) => b.total - a.total || houses.indexOf(a.house) - houses.indexOf(b.house));

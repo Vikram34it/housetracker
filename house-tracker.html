@@ -2678,7 +2678,7 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
 
     html += `<tr style="background:var(--card2)">
       <td colspan="2" style="text-align:right;font-weight:800;color:var(--accent)">${CAT_LABELS[prevCat] || prevCat} Subtotal</td>
-      ${houses.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${assigned[h] || 0}<span style="font-size:0.68rem;font-weight:400;color:var(--muted)"> / ${raw[h] || 0}</span></td>`).join('')}
+      ${houses.map(h => `<td style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${assigned[h] || 0}<span style="font-size:0.68rem;font-weight:400;color:var(--muted)"> / ${(prevCat === 'Academics' && opts.acadCumulativeValues) ? (opts.acadCumulativeValues[h] || 0) : (raw[h] || 0)}</span></td>`).join('')}
       <td class="cell-total" style="text-align:right;font-weight:700">${assignedTotal}</td>
     </tr>`;
     html += `<tr style="background:var(--card2);font-size:0.7rem;color:var(--muted)">
@@ -2895,8 +2895,17 @@ function computeAcademicRankingData(entriesArr, studentDataArr) {
       if(b.avg === null) return -1;
       return b.avg - a.avg;
     });
+    // Standard competition ranking: equal averages share the same position and
+    // points, and the next position is skipped (e.g. 1st, 1st, 3rd).
     const rankMap = {};
-    list.forEach((x, i) => { rankMap[x.house] = i; });
+    let prevAvg = null;
+    let prevRankIdx = 0;
+    list.forEach((x, i) => {
+      const rankIdx = (i > 0 && x.avg !== null && x.avg === prevAvg) ? prevRankIdx : i;
+      rankMap[x.house] = rankIdx;
+      prevAvg = x.avg;
+      prevRankIdx = rankIdx;
+    });
     cell.houseData = {};
     HOUSES.forEach(h => {
       const d = cell.houses[h];
@@ -2915,11 +2924,21 @@ function computeAcademicRankingData(entriesArr, studentDataArr) {
   HOUSES.forEach(h => cumulative[h] = 0);
   cellList.forEach(cell => HOUSES.forEach(h => cumulative[h] += cell.houseData[h].pts));
 
-  // Final overall position by cumulative points → final points awarded
+  // Final overall position by cumulative points → final points awarded.
+  // Standard competition ranking: equal totals share the same position and points,
+  // and the next position is skipped (e.g. 1st, 1st, 3rd).
   const sorted = HOUSES.map(h => ({ house: h, total: cumulative[h] })).sort((a, b) => b.total - a.total);
   const finalRank = {};
   const finalPoints = {};
-  sorted.forEach((x, i) => { finalRank[x.house] = i + 1; finalPoints[x.house] = acadPts[i] || 0; });
+  let prevTotal = null;
+  let prevRankIdx = 0;
+  sorted.forEach((x, i) => {
+    const rankIdx = (i > 0 && x.total === prevTotal) ? prevRankIdx : i;
+    finalRank[x.house] = rankIdx + 1;
+    finalPoints[x.house] = acadPts[rankIdx] || 0;
+    prevTotal = x.total;
+    prevRankIdx = rankIdx;
+  });
 
   return { hasData: true, cells: cellList, cumulative, finalRank, finalPoints };
 }

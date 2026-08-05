@@ -145,6 +145,50 @@ function initializeSheet(sheet, name) {
   }
 }
 
+// ===== SANITIZERS =====
+
+// Coerce any value to a finite number. null/undefined/empty/'-'/NaN -> 0.
+// This prevents non-numeric spreadsheets cells from corrupting point totals.
+function toNumber(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function cleanEntry(raw) {
+  return {
+    id: (raw && raw.id) ? String(raw.id) : (Date.now().toString(36) + Math.random().toString(36).substr(2, 5)),
+    house: String((raw && raw.house) || '').trim(),
+    category: String((raw && raw.category) || '').trim(),
+    subCategory: String((raw && raw.subCategory) || '').trim(),
+    position: toNumber(raw && raw.position),
+    points: toNumber(raw && raw.points),
+    event: String((raw && raw.event) || '').trim(),
+    note: String((raw && raw.note) || '').trim(),
+    date: (raw && raw.date) ? String(raw.date) : new Date().toISOString(),
+    exam: String((raw && raw.exam) || '').trim()
+  };
+}
+
+function cleanStudent(raw) {
+  const subjects = {};
+  if (raw && raw.subjects && typeof raw.subjects === 'object') {
+    Object.keys(raw.subjects).forEach(k => {
+      subjects[String(k)] = toNumber(raw.subjects[k]);
+    });
+  }
+  return {
+    name: String((raw && raw.name) || '').trim(),
+    house: String((raw && raw.house) || '').trim(),
+    cls: String((raw && raw.cls) || '').trim(),
+    sec: String((raw && raw.sec) || '').trim(),
+    subjects: subjects,
+    total: toNumber(raw && raw.total),
+    exam: String((raw && raw.exam) || '').trim(),
+    date: (raw && raw.date) ? String(raw.date) : new Date().toISOString()
+  };
+}
+
 // ===== ENTRIES =====
 
 function getEntries() {
@@ -195,28 +239,30 @@ function addEntry(entry) {
 function addEntries(entries) {
   const sheet = getSheet(SHEET_NAME_ENTRIES);
   const ids = [];
+  let skipped = 0;
   
-  entries.forEach(entry => {
-    const id = entry.id || Date.now().toString(36) + Math.random().toString(36).substr(2,5);
-    const date = entry.date || new Date().toISOString();
+  entries.forEach(raw => {
+    const entry = cleanEntry(raw);
+    // Never write an entry without a valid house (prevents empty rows corrupting totals)
+    if(!entry.house) { skipped++; Logger.log('[addEntries] skipped entry without a house'); return; }
     
     sheet.appendRow([
-      id,
+      entry.id,
       entry.house,
       entry.category,
-      entry.subCategory || '',
-      entry.position || 0,
+      entry.subCategory,
+      entry.position,
       entry.points,
-      entry.event || '',
-      entry.note || '',
-      date,
-      entry.exam || ''
+      entry.event,
+      entry.note,
+      entry.date,
+      entry.exam
     ]);
     
-    ids.push(id);
+    ids.push(entry.id);
   });
   
-  return {success: true, ids: ids, count: ids.length};
+  return {success: true, ids: ids, count: ids.length, skipped: skipped};
 }
 
 function deleteEntry(id) {
@@ -306,22 +352,25 @@ function getStudentData(house) {
 function addStudents(students) {
   const sheet = getSheet(SHEET_NAME_STUDENTS);
   let count = 0;
+  let skipped = 0;
   
-  students.forEach(student => {
+  students.forEach(raw => {
+    const student = cleanStudent(raw);
+    if(!student.name || !student.house) { skipped++; return; }
     sheet.appendRow([
       student.name,
       student.house,
-      student.cls || '',
-      student.sec || '',
-      JSON.stringify(student.subjects || {}),
-      student.total || 0,
-      student.exam || '',
-      student.date || new Date().toISOString()
+      student.cls,
+      student.sec,
+      JSON.stringify(student.subjects),
+      student.total,
+      student.exam,
+      student.date
     ]);
     count++;
   });
   
-  return {success: true, count: count};
+  return {success: true, count: count, skipped: skipped};
 }
 
 function deleteStudentData(house, cls) {
@@ -419,19 +468,83 @@ function resetAllIncludingUsers() {
 
 // ===== EXCEL IMPORT =====
 
+// Upsert students: re-importing the same file/exam updates the existing student rows
+// instead of adding duplicates. Matching is done on (name, house, class, exam) so that
+// unrelated student records are NEVER deleted or overwritten. Missing/non-numeric
+// totals are stored as 0 rather than empty/"-".
+function upsertStudents(students) {
+  const sheet = getSheet(SHEET_NAME_STUDENTS);
+  const data = sheet.getDataRange().getValues();
+
+  const existingByKey = {};
+  for(let i = 1; i < data.length; i++) {
+    const key = [String(data[i][0]||'').trim(), String(data[i][1]||'').trim(),
+                 String(data[i][2]||'').trim(), String(data[i][6]||'').trim()].join('|');
+    if(!existingByKey[key]) existingByKey[key] = i + 1;
+  }
+
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  students.forEach(raw => {
+    const s = cleanStudent(raw);
+    if(!s.name || !s.house) { skipped++; return; }
+
+    const key = [s.name, s.house, s.cls, s.exam].join('|');
+    const rowIdx = existingByKey[key];
+
+    if(rowIdx !== undefined) {
+      // Update the mark fields for this existing student only (Subjects=5, Total=6, Exam=7, Date=8).
+      sheet.getRange(rowIdx, 5, 1, 4).setValues([[
+        JSON.stringify(s.subjects),
+        s.total,
+        s.exam,
+        s.date
+      ]]);
+      updated++;
+    } else {
+      sheet.appendRow([s.name, s.house, s.cls, s.sec, JSON.stringify(s.subjects), s.total, s.exam, s.date]);
+      existingByKey[key] = sheet.getLastRow();
+      added++;
+    }
+  });
+
+  Logger.log('[upsertStudents] added=' + added + ', updated=' + updated + ', skipped=' + skipped);
+  return {success: true, added: added, updated: updated, skipped: skipped};
+}
+
 function importExcelData(data) {
   const {entries, students, examName, category} = data;
-  
-  // Add entries
-  const entryResult = addEntries(entries);
-  
-  // Add students
-  const studentResult = addStudents(students);
-  
+
+  Logger.log('[importExcelData] received entries=' + (entries ? entries.length : 0) +
+             ', students=' + (students ? students.length : 0) +
+             ', exam=' + examName + ', category=' + category);
+
+  // Sanitise/validate the payload BEFORE writing to the sheet.
+  const cleanEntries = (entries || []).filter(e => {
+    const c = cleanEntry(e);
+    if(!c.house) { Logger.log('[importExcelData] dropped entry without house'); return false; }
+    if(isNaN(c.points)) { Logger.log('[importExcelData] dropped entry with non-numeric points'); return false; }
+    return true;
+  });
+
+  const cleanStudents = (students || []).map(cleanStudent).filter(s => !!s.name && !!s.house);
+
+  // Add entries (append-only)
+  const entryResult = addEntries(cleanEntries);
+
+  // Merge students (update-or-insert) so re-imports never duplicate/corrupt existing records
+  const studentResult = upsertStudents(cleanStudents);
+
+  Logger.log('[importExcelData] result entriesAdded=' + entryResult.count +
+             ' (skipped ' + entryResult.skipped + '), studentsAdded=' + studentResult.added +
+             ', studentsUpdated=' + studentResult.updated);
+
   return {
     success: true,
     entriesAdded: entryResult.count,
-    studentsAdded: studentResult.count
+    studentsAdded: studentResult.added + studentResult.updated
   };
 }
 

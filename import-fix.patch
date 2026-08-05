@@ -1,0 +1,96 @@
+This patch fixes the "import corrupts existing academic data" bug.
+It touches two files:
+
+  1. Code.gs                 (Google Apps Script backend / Google Sheets source of truth)
+  2. house-tracker.html      (front-end display + academic aggregation)
+
+Apply manually or use:  git apply import-fix.patch
+----------------------------------------------------------------------
+
+=== FILE 1: Code.gs ===
+
+### 1) New sanitizer helpers (inserted just above "// ===== ENTRIES =====")
+
+  +// ===== SANITIZERS =====
+  +// Coerce any value to a finite number. null/undefined/empty/'-'/NaN -> 0.
+  +function toNumber(v) {
+  +  if (v === null || v === undefined || v === '') return 0;
+  +  const n = Number(v);
+  +  return isNaN(n) ? 0 : n;
+  +}
+  +function cleanEntry(raw) { ... coerces id/house/category/position/points/event/note/date/exam }
+  +function cleanStudent(raw) { ... coerces name/house/cls/sec/subjects/total/exam/date }
+
+  Purpose: reject null/undefined/empty-string/NaN/'-' values before writing, so a bad
+  spreadsheet cell can never replace a valid number with empty data.
+
+### 2) addEntries() — sanitise each row and skip entries without a valid house
+
+    - sheet.appendRow([id, entry.house, entry.category, entry.subCategory||'', entry.position||0,
+    -                  entry.points, entry.event||'', entry.note||'', date, entry.exam||'']);
+    + const entry = cleanEntry(raw);
+    + if(!entry.house) { skipped++; Logger.log(...); return; }
+    + sheet.appendRow([entry.id, entry.house, entry.category, entry.subCategory, entry.position,
+    +                  entry.points, entry.event, entry.note, entry.date, entry.exam]);
+    + return {success:true, ids, count: ids.length, skipped};
+
+### 3) addStudents() — sanitise each row and skip empty names/houses
+
+    - sheet.appendRow([student.name, student.house, student.cls||'', ..., student.total||0, ...]);
+    + const student = cleanStudent(raw);
+    + if(!student.name || !student.house) { skipped++; return; }
+    + sheet.appendRow([student.name, student.house, student.cls, student.sec,
+    +                  JSON.stringify(student.subjects), student.total, student.exam, student.date]);
+
+### 4) New upsertStudents() + rewritten importExcelData() (replaces old importExcelData)
+
+  upsertStudents():  Instead of blindly appending, match existing student rows on
+  (name | house | class | exam) and UPDATE them in place. Never deletes unrelated rows.
+
+    + const existingByKey = {};          // "name|house|class|exam" -> row index
+    + students.forEach(raw => {
+    +   const s = cleanStudent(raw);
+    +   if(!s.name || !s.house) { skipped++; return; }
+    +   const key = [s.name, s.house, s.cls, s.exam].join('|');
+    +   if(existingByKey[key]) {
+    +     sheet.getRange(rowIdx,5,1,4).setValues([[subjects,total,exam,date]]); // update
+    +     updated++;
+    +   } else {
+    +     sheet.appendRow([...]);          // insert
+    +     added++;
+    +   }
+    + });
+
+  importExcelData():  sanitise + validate the payload, appends entries, merges students.
+
+    + Logger.log(...)  validation logging before any write.
+    + const cleanEntries  = (entries||[]).filter(valid house + numeric points);
+    + const cleanStudents = (students||[]).map(cleanStudent).filter(name && house);
+    + addEntries(cleanEntries);
+    + upsertStudents(cleanStudents);
+
+----------------------------------------------------------------------
+
+=== FILE 2: house-tracker.html ===
+
+### 1) computeAcademicRanking() — never let a '-'/NaN/'' student total corrupt a house average
+
+    (entry-based cell accumulation)
+    - d.avgSum += parseFloat(m[1]);
+    + const mAvg = parseFloat(m[1]);
+    + d.avgSum += isNaN(mAvg) ? 0 : mAvg;
+
+    (studentData-based cell accumulation)
+    - d.avgSum += s.total || 0;
+    + const t = Number(s.total);
+    + d.avgSum += isNaN(t) ? 0 : t;   // never let '-'/NaN/'' corrupt the house average
+
+### 2) House detail academic table — show 0 instead of "-" for a missing subject mark
+
+    - const val = s.subjects[sub];
+    - if(val === undefined) return `<td ...>-</td>`;
+    + const rawVal = s.subjects[sub];
+    + const val = (rawVal===undefined || rawVal===null || isNaN(Number(rawVal))) ? 0 : Number(rawVal);
+
+----------------------------------------------------------------------
+END

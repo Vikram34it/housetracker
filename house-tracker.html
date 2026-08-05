@@ -2682,9 +2682,7 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
       ${houses.map(h => `<td style="text-align:center"><span style="font-weight:800;color:${HCOLOR[h]}">${['1st','2nd','3rd','4th','5th'][(cr.rank[prevCat][h]||1)-1]}</span></td>`).join('')}
       <td style="text-align:right"></td>
     </tr>`;
-    // The cap note describes the re-ranking scale; Academics no longer re-ranks its
-    // subtotal (it shows the Overall Cumulative directly), so skip the note for it.
-    if (scale.length > 0 && prevCat !== 'Academics') {
+    if (scale.length > 0) {
       html += `<tr style="background:var(--card2);font-size:0.7rem;color:var(--muted)">
         <td colspan="2" style="text-align:right;font-weight:700">Cap ${scale[0]} · 1st–5th:</td>
         <td colspan="${houses.length + 1}" style="font-weight:700">${scale.join(', ')}</td>
@@ -2985,12 +2983,7 @@ function computeCategoryRankPointsFor(windowEntries, opts = {}) {
     rank[cat] = {};
     // A house with zero raw points in a category gets nothing, regardless of rank position
     houses.forEach(h => {
-      // Academics is special: the "raw" value is already the Overall Cumulative (sum of the
-      // per-grade rank points). Don't re-rank it into the cap scale again — the Academic
-      // Excellence Subtotal must equal the Overall Cumulative shown in the analytics table.
-      ranked[cat][h] = (cat === 'Academics')
-        ? (raw[cat][h] || 0)
-        : (raw[cat][h] ? (scale[rankIdxMap[h]] || 0) : 0);
+      ranked[cat][h] = raw[cat][h] ? (scale[rankIdxMap[h]] || 0) : 0;
       rank[cat][h] = rankMap[h];
     });
   });

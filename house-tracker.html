@@ -2801,15 +2801,15 @@ function deriveCommonLabel(exam, grade) {
   return null;
 }
 
-function computeAcademicRanking() {
-  if(acadRankingCache) return acadRankingCache;
+// Core computation (no caching) so it can be reused for a specific month window.
+function computeAcademicRankingData(entriesArr, studentDataArr) {
   const acadPts = CATS.Academics.points;
   const cells = {};
   let found = false;
 
   // Common Label from Excel import: stored on non-grade academic entries as subCategory
   const commonLabels = {};
-  entries.forEach(e => {
+  entriesArr.forEach(e => {
     if(e.category !== 'Academics') return;
     if(gradeOf(e.subCategory) !== null) return;
     const label = String(e.subCategory || '').trim();
@@ -2827,7 +2827,7 @@ function computeAcademicRanking() {
   // student-data source below only fills houses that have NO entry data, but still
   // averages over ALL students of that house (instead of just the first one).
   const entryHouseKeys = new Set();
-  entries.forEach(e => {
+  entriesArr.forEach(e => {
     if(e.category !== 'Academics') return;
     if(!HOUSES.includes(e.house)) return;
     const g = gradeOf(e.subCategory) || gradeOf(e.event);
@@ -2851,8 +2851,8 @@ function computeAcademicRanking() {
   // Merged with the entry-based cells so previously imported student data (e.g. older
   // exam files that only exist as student rows) stays visible after a new Excel import.
   // Fills houses within a key that have no entry-based data (instead of skipping entire keys).
-  if(studentData && studentData.length > 0) {
-    studentData.forEach(s => {
+  if(studentDataArr && studentDataArr.length > 0) {
+    studentDataArr.forEach(s => {
       const g = gradeOf(s.cls);
       if(g === null) return;
       if(!HOUSES.includes(s.house)) return;
@@ -2873,8 +2873,7 @@ function computeAcademicRanking() {
   }
 
   if(!found) {
-    acadRankingCache = { hasData: false, cells: [], cumulative: {}, finalRank: {}, finalPoints: {} };
-    return acadRankingCache;
+    return { hasData: false, cells: [], cumulative: {}, finalRank: {}, finalPoints: {} };
   }
 
   const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th'];
@@ -2918,7 +2917,12 @@ function computeAcademicRanking() {
   const finalPoints = {};
   sorted.forEach((x, i) => { finalRank[x.house] = i + 1; finalPoints[x.house] = acadPts[i] || 0; });
 
-  acadRankingCache = { hasData: true, cells: cellList, cumulative, finalRank, finalPoints };
+  return { hasData: true, cells: cellList, cumulative, finalRank, finalPoints };
+}
+
+function computeAcademicRanking() {
+  if(acadRankingCache) return acadRankingCache;
+  acadRankingCache = computeAcademicRankingData(entries, studentData);
   return acadRankingCache;
 }
 
@@ -3510,7 +3514,34 @@ function renderMonthlyStats() {
 function renderMonthlyAcademicSummary() {
   const container = document.getElementById('monthlyAcademicSummaryContainer');
   if (!container) return;
-  const ranking = computeAcademicRanking();
+
+  // Only academic data that falls inside the currently selected month window.
+  let winEntries;
+  if (currentWindowKey === 'all') {
+    winEntries = entries;
+  } else {
+    const win = getWindowForKey(currentWindowKey);
+    winEntries = getEntriesForWindow(win);
+  }
+
+  // Restrict student rows to those imported in the same window (via their date).
+  let winStudents = [];
+  if (studentData && studentData.length > 0) {
+    if (currentWindowKey === 'all') {
+      winStudents = studentData;
+    } else {
+      const win = getWindowForKey(currentWindowKey);
+      const startStr = win.start.toISOString().slice(0, 10);
+      const endStr = win.end.toISOString().slice(0, 10);
+      winStudents = studentData.filter(s => {
+        if (!s.date) return false;
+        const d = s.date.slice(0, 10);
+        return d >= startStr && d < endStr;
+      });
+    }
+  }
+
+  const ranking = computeAcademicRankingData(winEntries, winStudents);
   if (ranking.hasData) {
     renderAcademicRankingTable(container, ranking);
   } else {

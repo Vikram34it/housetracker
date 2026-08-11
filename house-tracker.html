@@ -1804,6 +1804,11 @@
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">Houses</label>
+        <select class="form-select" id="bulkHouses" multiple size="5" onchange="updateBulkHouses()"></select>
+        <div class="form-helper">All 5 houses are selected by default. Hold Ctrl/Cmd and click to add or remove houses.</div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Event / Description</label>
         <input type="text" class="form-input" id="bulkEvent" placeholder="e.g. Inter-House Quiz Competition">
       </div>
@@ -3793,11 +3798,23 @@ function updateAddPoints(prefix='add') {
   document.getElementById(prefix+'PointsHelper').textContent = pts !== 0 ? `Points auto-calculated: ${pts}` : 'Custom points required for this selection';
 }
 
-function updateBulkSub() {
+function selectedBulkHouses() {
+  const el = document.getElementById('bulkHouses');
+  if(!el) return HOUSES;
+  const selected = Array.from(el.selectedOptions).map(o => o.value);
+  return selected.length ? selected : HOUSES;
+}
+
+function populateBulkHouses() {
+  const el = document.getElementById('bulkHouses');
+  if(!el) return;
+  el.innerHTML = HOUSES.map(h => `<option value="${h}" selected>${h}</option>`).join('');
+}
+
+function updateBulkHouses() {
+  const houses = selectedBulkHouses();
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
-  document.getElementById('bulkSubCategory').innerHTML = subOptions(cat);
-
   const labels = ['District','State','National'].includes(sub)
     ? ['1st Place','2nd Place','3rd Place','Participation']
     : ['1st Place','2nd Place','3rd Place','4th Place','5th Place'];
@@ -3806,7 +3823,7 @@ function updateBulkSub() {
   document.getElementById('bulkInputs').innerHTML = `
     <div style="margin-top:16px">
       <label class="form-label">Position per House — Points auto-calculated</label>
-      ${HOUSES.map(h => `
+      ${houses.map(h => `
         <div class="form-group" style="display:flex;align-items:center;gap:10px">
           <span class="house-tag" style="background:${HBGCOLOR[h]};color:${HCOLOR[h]};min-width:100px;text-align:center">${h}</span>
           <select class="form-select" id="bulkPos_${h}" style="flex:1" onchange="updateBulkPoints()">${posOptions}</select>
@@ -3818,10 +3835,17 @@ function updateBulkSub() {
   updateBulkPoints();
 }
 
+function updateBulkSub() {
+  const cat = document.getElementById('bulkCategory').value;
+  const sub = document.getElementById('bulkSubCategory').value;
+  document.getElementById('bulkSubCategory').innerHTML = subOptions(cat);
+  updateBulkHouses();
+}
+
 function updateBulkPoints() {
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
-  HOUSES.forEach(h => {
+  selectedBulkHouses().forEach(h => {
     const sel = document.getElementById('bulkPos_'+h);
     const ptsEl = document.getElementById('bulkPts_'+h);
     if(!sel || !ptsEl) return;
@@ -3833,7 +3857,7 @@ function updateBulkPoints() {
 function openModal(type) {
   document.getElementById(type+'Modal').classList.add('active');
   if(type==='add') { updateAddSub(); }
-  if(type==='bulk') { updateBulkSub(); }
+  if(type==='bulk') { populateBulkHouses(); updateBulkSub(); }
 }
 
 function closeModal(type) {
@@ -3947,7 +3971,7 @@ async function saveBulk() {
   let count = 0;
   const newEntries = [];
 
-  HOUSES.forEach(h => {
+  selectedBulkHouses().forEach(h => {
     const sel = document.getElementById('bulkPos_'+h);
     if(!sel) return;
     const pos = parseInt(sel.value);

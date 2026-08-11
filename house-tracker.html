@@ -1702,7 +1702,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Sub-Category</label>
-          <select class="form-select" id="addSubCategory" onchange="updateAddPoints()"></select>
+          <select class="form-select" id="addSubCategory" onchange="handleSubChange('add')"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Position</label>
@@ -1757,7 +1757,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Sub-Category</label>
-          <select class="form-select" id="editSubCategory" onchange="updateAddPoints('edit')"></select>
+          <select class="form-select" id="editSubCategory" onchange="handleSubChange('edit')"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Position</label>
@@ -1800,7 +1800,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Sub-Category</label>
-          <select class="form-select" id="bulkSubCategory" onchange="updateBulkSub()"></select>
+          <select class="form-select" id="bulkSubCategory" onchange="handleSubChange('bulk')"></select>
         </div>
       </div>
       <div class="form-group">
@@ -2066,6 +2066,9 @@ let sortField = 'date';
 let sortAsc = false;
 let activeView = 'dashboard';
 
+// Custom Co-Curricular events (persisted in backend Config as coCurricularEvents)
+let customEvents = [];
+
 // ===== USER STATE =====
 let currentUser = null;
 let users = [];
@@ -2235,6 +2238,9 @@ async function initializeApp() {
     }
     if(configData.formState) {
       savedFormState = JSON.parse(configData.formState);
+    }
+    if(configData.coCurricularEvents) {
+      try { customEvents = JSON.parse(configData.coCurricularEvents); } catch(e) { customEvents = []; }
     }
     
     // Load users for admin
@@ -3717,10 +3723,54 @@ function populateSelects() {
   });
 }
 
+function getSubs(cat) {
+  const base = [...(CATS[cat]?.subs || [])];
+  if(cat === 'Co-Curricular') {
+    (customEvents || []).forEach(e => { if(e && !base.includes(e)) base.push(e); });
+  }
+  return base;
+}
+
+function subOptions(cat) {
+  let opts = getSubs(cat).map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(cat === 'Co-Curricular') opts += '<option value="__add__">✚ Add new event…</option>';
+  return opts;
+}
+
+function handleSubChange(prefix='add') {
+  const el = document.getElementById(prefix+'SubCategory');
+  if(el.value === '__add__') {
+    addCustomEvent(prefix);
+    return;
+  }
+  if(prefix === 'bulk') { updateBulkSub(); return; }
+  updateAddPositions(prefix);
+  updateAddPoints(prefix);
+}
+
+async function addCustomEvent(prefix='add') {
+  const name = window.prompt('Enter the new Co-Curricular event name:');
+  const clean = (name || '').trim();
+  if(!clean) {
+    if(prefix === 'bulk') updateBulkSub(); else updateAddSub(prefix);
+    return;
+  }
+  if(!customEvents.includes(clean)) customEvents.push(clean);
+  try {
+    await apiPost({action: 'updateConfig', config: {coCurricularEvents: JSON.stringify(customEvents)}});
+  } catch(e) {
+    showToast('Event saved locally, but failed to persist: ' + e.message, 'error');
+  }
+  const subEl = document.getElementById(prefix+'SubCategory');
+  if(prefix === 'bulk') updateBulkSub(); else updateAddSub(prefix);
+  subEl.value = clean;
+  if(prefix === 'bulk') updateBulkPoints(); else updateAddPoints(prefix);
+  showToast('Event "' + clean + '" added','success');
+}
+
 function updateAddSub(prefix='add') {
   const cat = document.getElementById(prefix+'Category').value;
-  const subs = CATS[cat].subs;
-  document.getElementById(prefix+'SubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById(prefix+'SubCategory').innerHTML = subOptions(cat);
   updateAddPositions(prefix);
   updateAddPoints(prefix);
 }
@@ -3746,8 +3796,7 @@ function updateAddPoints(prefix='add') {
 function updateBulkSub() {
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
-  const subs = CATS[cat].subs;
-  document.getElementById('bulkSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById('bulkSubCategory').innerHTML = subOptions(cat);
 
   const labels = ['District','State','National'].includes(sub)
     ? ['1st Place','2nd Place','3rd Place','Participation']
@@ -3838,9 +3887,11 @@ function openEditEntry(id) {
   document.getElementById('editCategory').innerHTML = catKeys.map(c=>`<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
   document.getElementById('editCategory').value = entry.category;
 
-  const subs = [...CATS[entry.category].subs];
+  const subs = getSubs(entry.category);
   if(entry.subCategory && !subs.includes(entry.subCategory)) subs.unshift(entry.subCategory);
-  document.getElementById('editSubCategory').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  let subOpts = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(entry.category === 'Co-Curricular') subOpts += '<option value="__add__">✚ Add new event…</option>';
+  document.getElementById('editSubCategory').innerHTML = subOpts;
   document.getElementById('editSubCategory').value = entry.subCategory || '';
 
   const sub = document.getElementById('editSubCategory').value;

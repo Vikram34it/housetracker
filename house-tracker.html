@@ -3819,7 +3819,9 @@ function updateBulkHouses() {
 function updateBulkSub() {
   const cat = document.getElementById('bulkCategory').value;
   const sub = document.getElementById('bulkSubCategory').value;
-  document.getElementById('bulkSubCategory').innerHTML = subOptions(cat);
+  const subEl = document.getElementById('bulkSubCategory');
+  subEl.innerHTML = subOptions(cat);
+  subEl.value = sub;
   updateBulkHouses();
 }
 

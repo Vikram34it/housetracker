@@ -2765,12 +2765,13 @@ function printHouseEvents() {
 
 function printMonthlyHouseEvents() {
   const title = 'Monthly House-wise Event Summary';
+  const monthLabel = (document.getElementById('monthlyWindowLabel') || {}).textContent || '';
   const eventTableHtml = document.getElementById('monthlyHouseEventsTable').outerHTML;
   const acadContainer = document.getElementById('monthlyAcademicSummaryContainer');
   const acadHtml = acadContainer && acadContainer.innerHTML.trim() ? acadContainer.innerHTML : '';
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
-  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}${monthLabel ? ' (' + monthLabel + ')' : ''}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
       h1 { font-size: 22px; margin: 0 0 6px; }
@@ -2786,7 +2787,7 @@ function printMonthlyHouseEvents() {
       .academic-summary-table td { padding: 7px 10px; border: 1px solid #cbd5e1; }
       @media print { .no-print { display: none; } }
     </style></head><body>
-    <h1>${title}</h1>
+    <h1>${title}${monthLabel ? ' — ' + monthLabel : ''}</h1>
     <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
     ${acadHtml}
     ${eventTableHtml}

@@ -2731,18 +2731,12 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
 }
 
 function printHouseEvents() {
-  printHouseEventsFor('houseEventsTable', 'House-wise Event Summary');
-}
-
-function printMonthlyHouseEvents() {
-  printHouseEventsFor('monthlyHouseEventsTable', 'Monthly House-wise Event Summary');
-}
-
-function printHouseEventsFor(tableId, title) {
-  const tableHtml = document.getElementById(tableId).outerHTML;
+  const title = 'House-wise Event Summary';
+  const eventTableHtml = document.getElementById('houseEventsTable').outerHTML;
+  const acadContainer = document.getElementById('academicSummaryContainer');
+  const acadHtml = acadContainer && acadContainer.innerHTML.trim() ? acadContainer.innerHTML : '';
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
-  const theme = localStorage.getItem('vivaTheme') || 'classic';
   w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
@@ -2752,11 +2746,50 @@ function printHouseEventsFor(tableId, title) {
       th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
       td { padding: 7px 10px; border: 1px solid #cbd5e1; }
       tr:has(td[colspan]) td { font-weight: 700; background: #f1f5f9; }
+      .academic-summary { margin-bottom: 30px; }
+      .academic-summary-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+      .academic-summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .academic-summary-table th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; }
+      .academic-summary-table td { padding: 7px 10px; border: 1px solid #cbd5e1; }
       @media print { .no-print { display: none; } }
     </style></head><body>
     <h1>${title}</h1>
     <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
-    ${tableHtml}
+    ${acadHtml}
+    ${eventTableHtml}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 300);
+}
+
+function printMonthlyHouseEvents() {
+  const title = 'Monthly House-wise Event Summary';
+  const eventTableHtml = document.getElementById('monthlyHouseEventsTable').outerHTML;
+  const acadContainer = document.getElementById('monthlyAcademicSummaryContainer');
+  const acadHtml = acadContainer && acadContainer.innerHTML.trim() ? acadContainer.innerHTML : '';
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      td { padding: 7px 10px; border: 1px solid #cbd5e1; }
+      tr:has(td[colspan]) td { font-weight: 700; background: #f1f5f9; }
+      .academic-summary { margin-bottom: 30px; }
+      .academic-summary-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+      .academic-summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .academic-summary-table th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; }
+      .academic-summary-table td { padding: 7px 10px; border: 1px solid #cbd5e1; }
+      @media print { .no-print { display: none; } }
+    </style></head><body>
+    <h1>${title}</h1>
+    <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
+    ${acadHtml}
+    ${eventTableHtml}
   </body></html>`);
   w.document.close();
   w.focus();

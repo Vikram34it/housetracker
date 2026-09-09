@@ -2074,7 +2074,7 @@ const HCOLOR_DARK = { Compassion:'#166534', Courage:'#991B1B', Honesty:'#1E40AF'
 const CAT_COLOR_DARK = { 'Academics':'#B91C1C', 'Sports':'#B45309', 'Co-Curricular':'#047857', 'Unique Contributions':'#1D4ED8', 'Disciplinary':'#7E22CE' };
 
 const CATS = {
-  'Academics': { points:[30,25,20,15,10], subs:['Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'], color:'#f87171' },
+  'Academics': { points:[30,25,20,15,10], subs:['PP1','PP2','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'], color:'#f87171' },
   'Sports': { points:[7,5,3,2,1], subs:['Indoor Games','Outdoor Games','Cross Country','Athletics','Swimming'], color:'#fbbf24' },
   'Co-Curricular': { points:[10,8,6,4,2], subs:['Quiz','Spell Bee','Talent Tapping','Declamation'], color:'#34d399' },
   'Unique Contributions': { points:[15,12,9,6,3], subs:['District','State','National','Volunteering'], color:'#60a5fa' },
@@ -2114,11 +2114,27 @@ function gradeOf(v) {
   if(v === null || v === undefined) return null;
   const s = String(v).trim().toUpperCase();
   if(!s) return null;
+  // PP1 → -2, PP2 → -1 (sort before Grade 1)
+  const pp = s.match(/^PP\s*(\d+)$/);
+  if(pp) {
+    const n = parseInt(pp[1], 10);
+    if(n >= 1 && n <= 2) return n - 3;
+    return null;
+  }
   const token = s.split(/[^0-9XIV]+/).find(p => p.length > 0);
   if(!token) return null;
   const roman = { VI:6, VII:7, VIII:8, IX:9, X:10, XI:11, XII:12 };
   const g = roman[token] || parseInt(token, 10);
-  return (g >= 6 && g <= 12) ? g : null;
+  return (g >= 1 && g <= 12) ? g : null;
+}
+
+// Display label for a gradeOf() result (e.g. -2 → "PP1", 3 → "Grade 3").
+function gradeLabel(g) {
+  if(g === 'Unassigned') return g;
+  if(g === -2) return 'PP1';
+  if(g === -1) return 'PP2';
+  if(typeof g === 'number' && g >= 1 && g <= 12) return 'Grade ' + g;
+  return String(g);
 }
 
 // Coerce any value to a finite number. Protects Dashboard / House Details / Awards /
@@ -3498,7 +3514,7 @@ function renderAcademicRankingTable(container, ranking) {
       const rowTotal = HOUSES.reduce((s, h) => s + cell.houseData[h].pts, 0);
       html += `<tr>
         ${gi === 0 ? `<td style="font-weight:800" rowspan="${group.length}">${label}</td>` : ''}
-        <td style="text-align:center">Grade ${cell.grade}</td>
+        <td style="text-align:center">${gradeLabel(cell.grade)}</td>
         ${HOUSES.map(h => {
           const v = cell.houseData[h];
           if(v.avg === null) return `<td style="text-align:center;color:var(--muted)">—</td>`;
@@ -3652,7 +3668,7 @@ function renderFromEntries(container, classEntries, acadEntries) {
       const rankMap = {};
       houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>` + examTypeCell((classExams[cls] || ['General']).join(', ')) + `<td class="cls-cell">${cls}</td>`;
+      html += `<tr>` + examTypeCell((classExams[cls] || ['General']).join(', ')) + `<td class="cls-cell">${gradeLabel(cls)}</td>`;
       HOUSES.forEach(h => {
         const d = studentAvgs[cls] && studentAvgs[cls][h];
         if(!d || d.count === 0) {
@@ -3755,7 +3771,7 @@ function renderFromStudentData(container) {
     const rankMap = {};
     houseAvgs.forEach((h, i) => { rankMap[h.house] = i; });
 
-    html += `<tr><td class="cls-cell">${cls}</td>`;
+    html += `<tr><td class="cls-cell">${gradeLabel(cls)}</td>`;
     HOUSES.forEach(h => {
       const d = classHouseData[cls][h];
       if(!d || d.count === 0) {
@@ -3901,7 +3917,7 @@ function renderFromAcadWithStudentData(container, acadEntries) {
       const rankMap = {};
       houseRanks.forEach((h, i) => { rankMap[h.house] = i; });
 
-      html += `<tr>` + examTypeCell(exam) + (ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${cls}</td>` : '');
+      html += `<tr>` + examTypeCell(exam) + (ei === 0 ? `<td class="cls-cell" rowspan="${exams.length}">${gradeLabel(cls)}</td>` : '');
       HOUSES.forEach(h => {
         const d = houseData[h];
         if(!d || d.count === 0) { html += `<td class="house-cell" style="color:var(--muted)">—</td>`; return; }
@@ -5288,7 +5304,7 @@ async function importData() {
             id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
             house: h.house,
             category: category,
-            subCategory: 'Grade ' + cls,
+            subCategory: gradeLabel(cls),
             position: i + 1,
             points: pts,
             event: examName,

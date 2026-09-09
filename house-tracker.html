@@ -543,6 +543,11 @@
   [data-theme="vibrant"] .comparison-card { background: #ffffff; }
   [data-theme="vibrant"] .house-detail-card { background: #ffffff; }
 
+  [data-theme="vibrant"] .cat-month-card { background: #ffffff; }
+  [data-theme="vibrant"] .category-monthly-table th { background: #eee4ff; color: #4a3670; }
+  [data-theme="vibrant"] .category-monthly-table td { border-bottom-color: rgba(124,58,237,0.08); }
+  [data-theme="vibrant"] .category-monthly-table tr.total-row td { background: #eee4ff; }
+
   [data-theme="vibrant"] .toast { background: #ffffff; color: #1e1145; box-shadow: 0 8px 32px rgba(124,58,237,0.15); }
   [data-theme="vibrant"] .toast.success { border-left-color: #10b981; }
   [data-theme="vibrant"] .toast.error { border-left-color: #ef4444; }
@@ -873,6 +878,94 @@
     border-radius: 24px;
     padding: 28px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+  }
+
+  /* CATEGORY MONTHLY TABLES */
+  .category-monthly {
+    margin-top: 32px;
+  }
+
+  .cat-month-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .cat-month-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cat-month-card-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cat-month-card-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .category-monthly-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.82rem;
+  }
+
+  .category-monthly-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    background: var(--card2);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .category-monthly-table th.house-col, .category-monthly-table td.house-cell-val {
+    text-align: center;
+  }
+
+  .category-monthly-table td {
+    padding: 9px 12px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .category-monthly-table td.month-cell {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .category-monthly-table tr:not(.total-row):hover td { background: rgba(56,189,248,0.03); }
+
+  .category-monthly-table tr.total-row td {
+    background: var(--card2);
+    font-weight: 800;
+    border-top: 2px solid var(--border);
+  }
+
+  .category-monthly-table .zero-cell { color: var(--muted); font-weight: 400; }
+
+  .cat-monthly-empty {
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
   }
 
   .academic-summary-title {
@@ -1615,6 +1708,7 @@
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
     <div id="academicSummaryContainer"></div>
+    <div id="categoryMonthlyContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
         <div class="section-title">Comparative Event Summary</div>
@@ -2512,6 +2606,7 @@ function render() {
   renderAwards();
   renderHistory();
   renderNavTabs();
+  renderCategoryMonthly();
 }
 
 function renderNavTabs() {
@@ -2574,6 +2669,132 @@ function renderDashboard() {
 function renderHouseDetails() {
   renderHouseDetailsFor(getCategoryRankedStandings(), 'houseDetails', { showButton: true });
   renderAcademicSummary();
+}
+
+const ACAD_YEAR_MONTHS = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+
+function monthLabelOf(dateStr) {
+  const d = new Date(dateStr);
+  if(isNaN(d)) return null;
+  return d.toLocaleDateString('en-US', { month: 'long' });
+}
+
+function getMonthlyCategoryData() {
+  const data = {};
+  Object.keys(CATS).forEach(cat => {
+    data[cat] = {};
+    ACAD_YEAR_MONTHS.forEach(m => {
+      data[cat][m] = {};
+      HOUSES.forEach(h => data[cat][m][h] = 0);
+    });
+  });
+  entries.forEach(e => {
+    const m = monthLabelOf(e.date);
+    if(!m || !data[e.category] || !data[e.category][m]) return;
+    if(data[e.category][m][e.house] === undefined) return;
+    data[e.category][m][e.house] += pts(e.points);
+  });
+  return data;
+}
+
+function renderCategoryMonthly() {
+  const container = document.getElementById('categoryMonthlyContainer');
+  if(!container) return;
+  const data = getMonthlyCategoryData();
+
+  const cards = Object.keys(CATS).map(cat => {
+    const houseTotals = {};
+    let grandTotal = 0;
+    HOUSES.forEach(h => houseTotals[h] = 0);
+
+    const body = ACAD_YEAR_MONTHS.map(m => {
+      let rowTotal = 0;
+      const cells = HOUSES.map(h => {
+        const v = data[cat][m][h];
+        rowTotal += v;
+        houseTotals[h] += v;
+        const cls = v === 0 ? 'zero-cell' : '';
+        return `<td class="house-cell-val ${cls}" style="color:${v !== 0 ? HCOLOR[h] : ''};font-weight:${v !== 0 ? '800' : '400'}">${v !== 0 ? v : '–'}</td>`;
+      }).join('');
+      grandTotal += rowTotal;
+      return `<tr>
+        <td class="month-cell">${m}</td>
+        ${cells}
+        <td class="house-cell-val" style="font-weight:800">${rowTotal}</td>
+      </tr>`;
+    }).join('');
+
+    const totalCells = HOUSES.map(h => `<td class="house-cell-val" style="color:${HCOLOR[h]}">${houseTotals[h]}</td>`).join('');
+    const totalRow = `<tr class="total-row">
+      <td class="month-cell">Total</td>
+      ${totalCells}
+      <td class="house-cell-val" style="color:var(--accent)">${grandTotal}</td>
+    </tr>`;
+
+    const hasData = grandTotal !== 0 || entries.some(e => e.category === cat);
+    const bodyHtml = hasData ? body + totalRow : `<tr><td colspan="${HOUSES.length + 2}" class="cat-monthly-empty">No points recorded in this category yet</td></tr>`;
+
+    return `
+      <div class="cat-month-card">
+        <div class="cat-month-card-header">
+          <div>
+            <div class="cat-month-card-title"><span style="color:${CATS[cat].color}">●</span> ${CAT_LABELS[cat] || cat}</div>
+            <div class="cat-month-card-sub">Academic Year · Month-wise normal points (uncapped)</div>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="category-monthly-table">
+            <thead><tr>
+              <th>Month</th>
+              ${HOUSES.map(h => `<th class="house-col" style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+              <th class="house-col">Total</th>
+            </tr></thead>
+            <tbody>${bodyHtml}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="category-monthly">
+      <div class="section-header">
+        <div class="section-title">Category-wise Monthly Points</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="printCategoryMonthly()">🖨️ Print</button>
+        </div>
+      </div>
+      ${cards}
+    </div>`;
+}
+
+function printCategoryMonthly() {
+  const container = document.getElementById('categoryMonthlyContainer');
+  if(!container) return;
+  const w = window.open('', '_blank', 'width=1000,height=700');
+  if(!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+  const cards = container.querySelectorAll('.cat-month-card');
+  const tablesHtml = Array.from(cards).map(card => {
+    const title = card.querySelector('.cat-month-card-title').textContent.trim();
+    const table = card.querySelector('.category-monthly-table').outerHTML;
+    return `<h2 style="font-size:16px;margin:24px 0 8px">${title}</h2>${table}`;
+  }).join('');
+  w.document.write(`<!DOCTYPE html><html><head><title>Category-wise Monthly Points</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+      th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      td { padding: 7px 10px; border: 1px solid #cbd5e1; }
+      tr:last-child td { font-weight: 700; background: #f1f5f9; }
+    </style></head><body>
+    <h1>Category-wise Monthly Points</h1>
+    <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
+    ${tablesHtml}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 300);
 }
 
 function renderHouseDetailsFor(standings, containerId, opts = {}) {

@@ -547,6 +547,7 @@
   [data-theme="vibrant"] .category-monthly-table th { background: #eee4ff; color: #4a3670; }
   [data-theme="vibrant"] .category-monthly-table td { border-bottom-color: rgba(124,58,237,0.08); }
   [data-theme="vibrant"] .category-monthly-table tr.total-row td { background: #eee4ff; }
+  [data-theme="vibrant"] .category-monthly-table tr.capped-row td { background: #f5f1ff; }
 
   [data-theme="vibrant"] .toast { background: #ffffff; color: #1e1145; box-shadow: 0 8px 32px rgba(124,58,237,0.15); }
   [data-theme="vibrant"] .toast.success { border-left-color: #10b981; }
@@ -957,6 +958,12 @@
     background: var(--card2);
     font-weight: 800;
     border-top: 2px solid var(--border);
+  }
+
+  .category-monthly-table tr.capped-row td {
+    background: rgba(99,102,241,0.05);
+    border-top: 1px dashed var(--border);
+    font-size: 0.78rem;
   }
 
   .category-monthly-table .zero-cell { color: var(--muted); font-weight: 400; }
@@ -2785,8 +2792,35 @@ function renderCategoryMonthly() {
       <td class="house-cell-val" style="color:var(--accent)">${grandTotal}</td>
     </tr>`;
 
+    // Capped points (category scale, re-ranked 1st–5th) + position, under each house total
+    const scale = CATEGORY_PTS[cat] || CATS[cat]?.points || [];
+    const order = HOUSES.map(h => ({ house: h, total: houseTotals[h] }))
+      .sort((a, b) => b.total - a.total || HOUSES.indexOf(a.house) - HOUSES.indexOf(b.house));
+    const rankIdxMap = {};
+    const rankMap = {};
+    let prevTotal = null;
+    let prevRankIdx = 0;
+    order.forEach((x, i) => {
+      const rankIdx = (i > 0 && x.total === prevTotal) ? prevRankIdx : i;
+      rankIdxMap[x.house] = rankIdx;
+      rankMap[x.house] = rankIdx + 1;
+      prevTotal = x.total;
+      prevRankIdx = rankIdx;
+    });
+    const posLabel = ['1st','2nd','3rd','4th','5th'];
+    const cappedCells = HOUSES.map(h => {
+      const capped = houseTotals[h] > 0 ? (scale[rankIdxMap[h]] || 0) : 0;
+      const pos = houseTotals[h] > 0 ? (posLabel[rankMap[h] - 1] || rankMap[h] + 'th') : '–';
+      return `<td class="house-cell-val" style="color:${HCOLOR[h]};font-weight:800">${capped}<span style="font-size:0.68rem;font-weight:600;color:var(--muted)">&nbsp;${pos}</span></td>`;
+    }).join('');
+    const cappedRow = `<tr class="capped-row">
+      <td class="month-cell">Capped Points (Position)</td>
+      ${cappedCells}
+      <td class="house-cell-val" style="color:var(--muted);font-weight:600">–</td>
+    </tr>`;
+
     const hasData = grandTotal !== 0 || entries.some(e => e.category === cat);
-    const bodyHtml = hasData ? body + totalRow : `<tr><td colspan="${HOUSES.length + 2}" class="cat-monthly-empty">No points recorded in this category yet</td></tr>`;
+    const bodyHtml = hasData ? body + totalRow + cappedRow : `<tr><td colspan="${HOUSES.length + 2}" class="cat-monthly-empty">No points recorded in this category yet</td></tr>`;
 
     return `
       <div class="cat-month-card">

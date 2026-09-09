@@ -2843,6 +2843,60 @@ function renderCategoryMonthly() {
       </div>`;
   }).join('');
 
+  // Overall position card: sum of each category's capped points, ranked 1st-5th.
+  const overall = getCategoryRankedStandingsFor(entries, { acadCumulative: true });
+  const overallByHouse = {};
+  overall.forEach(s => overallByHouse[s.house] = s);
+  const catKeys = Object.keys(CATS);
+  const posLabel = ['1st', '2nd', '3rd', '4th', '5th'];
+  const overallRows = catKeys.map(c => {
+    const cells = HOUSES.map(h => {
+      const v = overallByHouse[h] ? (overallByHouse[h].byCat[c] || 0) : 0;
+      return `<td class="house-cell-val" style="text-align:center;font-weight:${v ? '700' : '400'}">${v || 0}</td>`;
+    }).join('');
+    const rowTotal = HOUSES.reduce((s, h) => s + (overallByHouse[h] ? (overallByHouse[h].byCat[c] || 0) : 0), 0);
+    return `<tr>
+      <td class="month-cell">${CAT_LABELS[c] || c}</td>
+      ${cells}
+      <td class="house-cell-val" style="text-align:center;font-weight:700">${rowTotal}</td>
+    </tr>`;
+  }).join('');
+  const totalCells = HOUSES.map(h => `<td class="house-cell-val" style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${overallByHouse[h] ? overallByHouse[h].total : 0}</td>`).join('');
+  const grandTotal = overall.reduce((s, x) => s + x.total, 0);
+  const totalRow = `<tr class="total-row">
+    <td class="month-cell">Total (Capped)</td>
+    ${totalCells}
+    <td class="house-cell-val" style="text-align:center;font-weight:800;color:var(--accent)">${grandTotal}</td>
+  </tr>`;
+  const posCells = HOUSES.map(h => {
+    const r = overallByHouse[h] ? overallByHouse[h].rank : null;
+    return `<td class="house-cell-val" style="text-align:center;font-weight:800;color:${HCOLOR[h]}">${r ? (posLabel[r - 1] || r + 'th') : '–'}</td>`;
+  }).join('');
+  const posRow = `<tr class="capped-row">
+    <td class="month-cell">Position</td>
+    ${posCells}
+    <td class="house-cell-val" style="text-align:center;color:var(--muted)">–</td>
+  </tr>`;
+  const overallCard = `
+    <div class="cat-month-card">
+      <div class="cat-month-card-header">
+        <div>
+          <div class="cat-month-card-title">Overall Position (Combined Capped Points)</div>
+          <div class="cat-month-card-sub">Sum of every category's capped points · ranked by overall total</div>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="category-monthly-table">
+          <thead><tr>
+            <th>Category</th>
+            ${HOUSES.map(h => `<th class="house-col" style="color:${HCOLOR[h]}">${h}</th>`).join('')}
+            <th class="house-col">Total</th>
+          </tr></thead>
+          <tbody>${overallRows}${totalRow}${posRow}</tbody>
+        </table>
+      </div>
+    </div>`;
+
   container.innerHTML = `
     <div class="category-monthly">
       <div class="section-header">
@@ -2852,6 +2906,7 @@ function renderCategoryMonthly() {
         </div>
       </div>
       ${cards}
+      ${overallCard}
     </div>`;
 }
 

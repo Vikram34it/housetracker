@@ -2500,27 +2500,14 @@ function getSorted() {
 }
 function getMaxCat(h) { const cats=Object.keys(CATS); let max=0,c=''; cats.forEach(c2=>{const v=getCatTotal(h,c2);if(v>max){max=v;c=c2;}}); return {cat:c,val:max}; }
 
-// ===== MONTHLY WINDOW (first Monday of the month → first Monday of the next month) =====
-function firstMondayOfMonth(y, m) {
-  const d = new Date(Date.UTC(y, m - 1, 1));
-  const day = d.getUTCDay();
-  const add = day === 1 ? 0 : (day === 0 ? 1 : 8 - day);
-  return new Date(Date.UTC(y, m - 1, 1 + add));
-}
-
+// ===== MONTHLY WINDOW (1st of the month → 1st of the next month) =====
 function getMonthlyWindow(now = new Date()) {
-  // The latest month whose first Monday is on or before today starts the current window.
-  let y = now.getUTCFullYear();
-  let m = now.getUTCMonth() + 1;
-  let start = firstMondayOfMonth(y, m);
-  if (start > now) {
-    m--;
-    if (m < 1) { m = 12; y--; }
-    start = firstMondayOfMonth(y, m);
-  }
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth() + 1;
+  const start = new Date(Date.UTC(y, m - 1, 1));
   let ey = y, em = m + 1;
   if (em > 12) { em = 1; ey++; }
-  const end = firstMondayOfMonth(ey, em);
+  const end = new Date(Date.UTC(ey, em - 1, 1));
   return { start, end };
 }
 
@@ -2536,21 +2523,23 @@ function getEntriesForWindow(win) {
 
 function monthlyWindowLabel(win) {
   const fmt = (d, withYear) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}) });
-  const sameYear = win.start.getUTCFullYear() === win.end.getUTCFullYear();
-  return sameYear ? `${fmt(win.start, false)} – ${fmt(win.end, true)}` : `${fmt(win.start, true)} – ${fmt(win.end, true)}`;
+  // end is 1st of next month; show last day of current month instead
+  const lastDay = new Date(Date.UTC(win.end.getUTCFullYear(), win.end.getUTCMonth(), 0));
+  const sameYear = win.start.getUTCFullYear() === lastDay.getUTCFullYear();
+  return sameYear ? `${fmt(win.start, false)} – ${fmt(lastDay, true)}` : `${fmt(win.start, true)} – ${fmt(lastDay, true)}`;
 }
 
-// A window is identified by the month (YYYY-MM) whose first Monday starts it.
+// A window is identified by the month (YYYY-MM).
 function windowKeyOf(win) {
   return win.start.toISOString().slice(0, 7);
 }
 
 function getWindowForKey(ym) {
   const [y, m] = ym.split('-').map(Number);
-  const start = firstMondayOfMonth(y, m);
+  const start = new Date(Date.UTC(y, m - 1, 1));
   let ey = y, em = m + 1;
   if (em > 12) { em = 1; ey++; }
-  const end = firstMondayOfMonth(ey, em);
+  const end = new Date(Date.UTC(ey, em - 1, 1));
   return { start, end };
 }
 
@@ -2681,7 +2670,7 @@ function renderHouseDetails() {
 const ACAD_YEAR_MONTHS = ['July','August','September','October','November','December','January','February','March','April','May','June'];
 
 // Map a date to the app's Monthly-view window and return the window's month name
-// (first Monday of the month → first Monday of the next month, matching the Monthly tab chips).
+// (1st of the month → 1st of the next month, matching the Monthly tab chips).
 function windowMonthNameOf(dateStr) {
   const d = new Date(dateStr);
   if(isNaN(d)) return null;

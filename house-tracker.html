@@ -2913,31 +2913,68 @@ function renderCategoryMonthly() {
 function printCategoryMonthly() {
   const container = document.getElementById('categoryMonthlyContainer');
   if(!container) return;
-  const w = window.open('', '_blank', 'width=1000,height=700');
+  const w = window.open('', '_blank', 'width=1100,height=750');
   if(!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
   const cards = container.querySelectorAll('.cat-month-card');
-  const tablesHtml = Array.from(cards).map(card => {
-    const title = card.querySelector('.cat-month-card-title').textContent.trim();
-    const table = card.querySelector('.category-monthly-table').outerHTML;
-    return `<h2 style="font-size:16px;margin:24px 0 8px">${title}</h2>${table}`;
+  if(cards.length === 0) return;
+  const sections = Array.from(cards).map((card, i) => {
+    const title = card.querySelector('.cat-month-card-title').textContent.replace(/^\S+\s*/, '').trim();
+    const subEl = card.querySelector('.cat-month-card-sub');
+    const sub = subEl ? subEl.textContent.trim() : '';
+    const table = card.querySelector('.category-monthly-table').outerHTML.replace(/class="category-monthly-table"/g, 'class="category-monthly-table print-table"');
+    const isLast = i === cards.length - 1;
+    return `
+      <section class="print-section${isLast ? ' last' : ''}">
+        <header class="page-head">
+          <span class="page-index">${String(i + 1).padStart(2, '0')} / ${cards.length}</span>
+          <h2 class="page-cat">${title}</h2>
+          <div class="page-spacer"></div>
+          <div class="page-sub">${sub}</div>
+        </header>
+        <div class="table-wrap">${table}</div>
+      </section>`;
   }).join('');
   w.document.write(`<!DOCTYPE html><html><head><title>Category-wise Monthly Points</title>
     <style>
-      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
-      h1 { font-size: 22px; margin: 0 0 6px; }
-      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
-      table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
-      th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-      td { padding: 7px 10px; border: 1px solid #cbd5e1; }
-      tr:last-child td { font-weight: 700; background: #f1f5f9; }
+      @page { size: A4 landscape; margin: 12mm 12mm 14mm; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; background: #fff; }
+      .print-section { page-break-after: always; break-after: page; padding: 2px 0; }
+      .print-section.last { page-break-after: auto; break-after: auto; }
+      .report-masthead { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 3px solid #7c3aed; }
+      .report-masthead h1 { font-size: 21px; margin: 0; color: #4a3670; letter-spacing: 0.3px; }
+      .report-masthead .meta { font-size: 11.5px; color: #64748b; margin-top: 4px; }
+      .report-badge { font-size: 11px; font-weight: 700; color: #6d28d9; background: #ede9fe; border: 1px solid #ddd6fe; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+      .page-head { display: flex; align-items: baseline; margin: 8px 0 12px; }
+      .page-index { font-size: 12px; font-weight: 800; color: #a78bfa; letter-spacing: 1px; flex-shrink: 0; margin-right: 14px; }
+      .page-cat { font-size: 17px; margin: 0; color: #4a3670; flex-shrink: 0; }
+      .page-spacer { flex: 1; }
+      .page-sub { font-size: 11px; color: #64748b; margin-left: 16px; text-align: right; }
+      .table-wrap { overflow: hidden; }
+      table.print-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      table.print-table th { background: #4a3670; color: #fff !important; text-align: left; padding: 9px 12px; border: 1px solid #3b2a5e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      table.print-table td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+      table.print-table tbody tr:nth-child(even) td { background: #f8fafc; }
+      table.print-table tr.total-row td { font-weight: 800; background: #f1f5f9; border-top: 2px solid #cbd5e1; }
+      table.print-table tr.capped-row td { background: #faf7ff; font-size: 11.5px; border-top: 1px dashed #d8b4fe; }
+      table.print-table .month-cell { font-weight: 700; color: #4a3670; white-space: nowrap; }
+      table.print-table .house-cell-val { text-align: center; }
+      table.print-table .zero-cell { color: #cbd5e1; }
+      .footer-note { margin-top: 16px; font-size: 10px; color: #94a3b8; text-align: center; letter-spacing: 0.5px; }
     </style></head><body>
-    <h1>Category-wise Monthly Points</h1>
-    <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
-    ${tablesHtml}
-  </body></html>`);
+    <div class="report-masthead">
+      <div>
+        <h1>Viva House Championship — Category-wise Monthly Points</h1>
+        <div class="meta">Academic Year · normal points (uncapped) per month, capped category points, overall positions</div>
+      </div>
+      <div class="report-badge">Generated ${new Date().toLocaleString('en-IN')}</div>
+    </div>
+    ${sections}
+    <div class="footer-note">VIVA HOUSE CHAMPIONSHIP · HOUSE TRACKER</div>
+    </body></html>`);
   w.document.close();
   w.focus();
-  setTimeout(() => { w.print(); }, 300);
+  setTimeout(() => { w.print(); }, 350);
 }
 
 function renderHouseDetailsFor(standings, containerId, opts = {}) {

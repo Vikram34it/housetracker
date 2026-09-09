@@ -2673,10 +2673,28 @@ function renderHouseDetails() {
 
 const ACAD_YEAR_MONTHS = ['July','August','September','October','November','December','January','February','March','April','May','June'];
 
-function monthLabelOf(dateStr) {
+// Map a date to the app's Monthly-view window and return the window's month name
+// (first Monday of the month → first Monday of the next month, matching the Monthly tab chips).
+function windowMonthNameOf(dateStr) {
   const d = new Date(dateStr);
   if(isNaN(d)) return null;
-  return d.toLocaleDateString('en-US', { month: 'long' });
+  return getMonthlyWindow(d).start.toLocaleDateString('en-US', { month: 'long' });
+}
+
+// Start year (July) of the academic year that the data belongs to.
+function acadYearStartYear() {
+  let sy = 0;
+  const bump = (dateStr) => {
+    if(!dateStr) return;
+    const d = new Date(dateStr);
+    if(isNaN(d)) return;
+    const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+    const s = m >= 7 ? y : y - 1;
+    if(s > sy) sy = s;
+  };
+  entries.forEach(e => bump(e.date));
+  (studentData || []).forEach(s => bump(s.date));
+  return sy || new Date().getUTCFullYear();
 }
 
 function getMonthlyCategoryData() {
@@ -2688,12 +2706,48 @@ function getMonthlyCategoryData() {
       HOUSES.forEach(h => data[cat][m][h] = 0);
     });
   });
+
+  const startYear = acadYearStartYear();
+  const windows = {};
+  ACAD_YEAR_MONTHS.forEach((m, i) => {
+    const mo = ((7 + i - 1) % 12) + 1;
+    const y = startYear + Math.floor((7 + i - 1) / 12);
+    windows[m] = getWindowForKey(`${y}-${String(mo).padStart(2, '0')}`);
+  });
+
+  // Non-academic categories: normal (uncapped) points summed per monthly window.
   entries.forEach(e => {
-    const m = monthLabelOf(e.date);
+    if(e.category === 'Academics') return;
+    const m = windowMonthNameOf(e.date);
     if(!m || !data[e.category] || !data[e.category][m]) return;
     if(data[e.category][m][e.house] === undefined) return;
     data[e.category][m][e.house] += pts(e.points);
   });
+
+  // Academics: use the app's ranking model (class averages per grade+exam → 30/25/20/15/10),
+  // cumulated per window — identical to the Monthly tab / Comparative Event Summary figures.
+  ACAD_YEAR_MONTHS.forEach(m => {
+    const win = windows[m];
+    const winEntries = getEntriesForWindow(win);
+    const startStr = win.start.toISOString().slice(0, 10);
+    const endStr = win.end.toISOString().slice(0, 10);
+    const winStudents = (studentData && studentData.length > 0)
+      ? studentData.filter(s => {
+          if(!s.date) return false;
+          const d = s.date.slice(0, 10);
+          return d >= startStr && d < endStr;
+        })
+      : [];
+    const r = computeAcademicRankingData(winEntries, winStudents);
+    if(r.hasData) {
+      HOUSES.forEach(h => data['Academics'][m][h] = r.cumulative[h] || 0);
+    } else if(winEntries.length > 0) {
+      winEntries.filter(e => e.category === 'Academics').forEach(e => {
+        if(data['Academics'][m][e.house] !== undefined) data['Academics'][m][e.house] += pts(e.points);
+      });
+    }
+  });
+
   return data;
 }
 

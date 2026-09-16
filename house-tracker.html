@@ -4827,12 +4827,12 @@ function downloadTemplate() {
 }
 
 function downloadHouseTemplate() {
-  const csv = `House,Grade 6,Grade 7,Grade 8,Grade 9,Grade 10,Total
-Compassion,450,460,508,520,530,2468
-Courage,460,470,478,510,540,2458
-Honesty,440,455,522,505,535,2457
-Loyalty,470,450,513,515,525,2473
-Truth,455,465,490,500,520,2430`;
+  const csv = `House,PP1,PP2,Grade 1,Grade 2,Grade 3,Grade 4,Grade 5,Grade 6,Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12,Total
+Compassion,180,190,360,370,400,420,440,450,460,508,520,530,540,550,5928
+Courage,175,185,355,365,395,415,435,460,470,478,510,540,545,555,5883
+Honesty,185,195,365,375,410,425,445,440,455,522,505,535,550,545,5952
+Loyalty,170,182,350,360,385,410,430,470,450,513,515,525,530,548,5938
+Truth,178,188,358,368,398,418,438,455,465,490,500,520,535,552,5963`;
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

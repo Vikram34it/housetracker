@@ -1663,16 +1663,21 @@
   <!-- IMPORT VIEW -->
   <div class="view" id="importView">
     <div class="section-header">
-      <div class="section-title">Excel Import — Academic Marks</div>
+      <div class="section-title" id="importSectionTitle">Excel Import — Academic Marks</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
-      <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">How it works</div>
-      <div style="font-size:0.78rem;color:var(--muted);line-height:1.6">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">Import Type</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="importTypeStudentBtn" onclick="setImportType('student')">Student-wise (per subject)</button>
+        <button class="btn btn-ghost" id="importTypeHouseBtn" onclick="setImportType('house')">House-wise (grades as columns)</button>
+      </div>
+      <div id="importHowText" style="font-size:0.78rem;color:var(--muted);line-height:1.6;margin-top:12px">
         Upload an Excel/CSV file with student marks. Columns: Name, House, Class, Section, and subject marks.<br>
         Houses are ranked by <b>per-class average</b> — each class contributes equally regardless of student count.
       </div>
       <div style="margin-top:12px">
-        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">Download Template</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">Download Student Template</button>
+        <button class="btn btn-ghost btn-sm" id="downloadHouseTemplateBtn" style="display:none" onclick="downloadHouseTemplate()">Download House Template</button>
       </div>
     </div>
 
@@ -1693,8 +1698,12 @@
       </div>
 
       <div id="houseResults" style="display:none;margin-top:24px">
-        <div style="font-size:0.9rem;font-weight:700;margin-bottom:16px">Results — Per-Class Averaged</div>
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:16px" id="importResultsHeader">Results — Per-Class Averaged</div>
         <div id="resultsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px"></div>
+        <div id="gradeResultsWrap" style="display:none;margin-top:24px">
+          <div style="font-size:0.9rem;font-weight:700;margin-bottom:12px">Per-Grade Results</div>
+          <div id="gradeResultsGrid"></div>
+        </div>
       </div>
     </div>
 
@@ -2197,6 +2206,8 @@ let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM (unused — 
 let rawExcelData = [];
 let columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
 let studentData = [];
+let importType = 'student';
+let houseWiseCols = { house: -1, total: -1, grades: [] };
 
 // ===== AUTHENTICATION =====
 function handleLogin(event) {
@@ -4815,6 +4826,303 @@ function downloadTemplate() {
   showToast('Template downloaded', 'success');
 }
 
+function downloadHouseTemplate() {
+  const csv = `House,Grade 6,Grade 7,Grade 8,Grade 9,Grade 10,Total
+Compassion,450,460,508,520,530,2468
+Courage,460,470,478,510,540,2458
+Honesty,440,455,522,505,535,2457
+Loyalty,470,450,513,515,525,2473
+Truth,455,465,490,500,520,2430`;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'house-wise-grades-template.csv';
+  a.click();
+  showToast('House-wise template downloaded', 'success');
+}
+
+function setImportType(type) {
+  importType = (type === 'house') ? 'house' : 'student';
+  clearFile();
+  const stdBtn = document.getElementById('importTypeStudentBtn');
+  const hseBtn = document.getElementById('importTypeHouseBtn');
+  if(stdBtn && hseBtn) {
+    stdBtn.className = importType === 'student' ? 'btn btn-primary' : 'btn btn-ghost';
+    hseBtn.className = importType === 'house' ? 'btn btn-primary' : 'btn btn-ghost';
+  }
+  const hseTplBtn = document.getElementById('downloadHouseTemplateBtn');
+  if(hseTplBtn) hseTplBtn.style.display = importType === 'house' ? '' : 'none';
+  const how = document.getElementById('importHowText');
+  if(how) {
+    how.innerHTML = importType === 'house'
+      ? 'Upload an Excel/CSV file where each <b>row is a House</b> and each <b>column is a Grade</b> (cell = total marks for that house + grade). Optionally add a <b>Total</b> column to rank the houses overall.<br>Houses are ranked by their marks within each grade — 1st to 5th get 30/25/20/15/10 points.'
+      : 'Upload an Excel/CSV file with student marks. Columns: Name, House, Class, Section, and subject marks.<br>Houses are ranked by <b>per-class average</b> — each class contributes equally regardless of student count.';
+  }
+  const title = document.getElementById('importSectionTitle');
+  if(title) title.textContent = 'Excel Import — ' + (importType === 'house' ? 'House-wise Grades' : 'Academic Marks');
+}
+
+function detectHouseWiseColumns(headers) {
+  const cols = { house: -1, total: -1, grades: [] };
+  headers.forEach((h, i) => {
+    const s = String(h == null ? '' : h).trim();
+    const low = s.toLowerCase();
+    if(cols.house === -1 && /^house(\s|$)/i.test(low)) { cols.house = i; return; }
+    if(cols.total === -1 && /^(grand\s*total|total)$/i.test(low)) { cols.total = i; return; }
+    const g = gradeOf(s);
+    if(g !== null && !cols.grades.some(x => x.key === g)) cols.grades.push({ i, key: g, label: gradeLabel(g) });
+  });
+  cols.grades.sort((a, b) => a.key - b.key);
+  return cols;
+}
+
+function collectHouseWiseData() {
+  const files = (window._pendingFiles && window._pendingFiles.length > 0)
+    ? window._pendingFiles
+    : [{ fileName: 'upload.xlsx', headers: rawExcelData[0] || [], rows: (rawExcelData || []).slice(1) }];
+  const byHouse = {};
+  const gradeKeys = [];
+  let hasTotalColumn = false;
+  files.forEach(file => {
+    const cols = detectHouseWiseColumns(file.headers);
+    cols.grades.forEach(g => { if(!gradeKeys.includes(g.key)) gradeKeys.push(g.key); });
+    if(cols.total >= 0) hasTotalColumn = true;
+    if(cols.house === -1) return;
+    file.rows.forEach(row => {
+      const house = normalizeImportHouse(row[cols.house]);
+      if(!house) return;
+      if(!byHouse[house]) byHouse[house] = {};
+      cols.grades.forEach(g => {
+        const v = parseFloat(row[g.i]);
+        if(!isNaN(v)) byHouse[house][g.key] = (byHouse[house][g.key] || 0) + v;
+      });
+      if(cols.total >= 0) {
+        const tv = parseFloat(row[cols.total]);
+        if(!isNaN(tv)) byHouse[house].__total = (byHouse[house].__total || 0) + tv;
+      }
+    });
+  });
+  gradeKeys.sort((a, b) => a - b);
+  return { houses: byHouse, grades: gradeKeys, hasTotalColumn };
+}
+
+function renderHouseWiseActions() {
+  const prevExam = document.getElementById('importExamName')?.value || '';
+  const prevCat = document.getElementById('importCategory')?.value || '';
+  const prevLabel = document.getElementById('importCommonLabel')?.value || '';
+  const includeTotalEl = document.getElementById('importIncludeTotal');
+  const prevTotal = includeTotalEl ? includeTotalEl.checked : true;
+
+  document.getElementById('importActions').innerHTML = `
+    <div>
+      <label class="form-label">Exam / Event Name</label>
+      <input type="text" class="form-input" id="importExamName" placeholder="e.g. PT-1 Exam 2025" value="${prevExam.replace(/"/g,'&quot;')}">
+    </div>
+    <div>
+      <label class="form-label">Category</label>
+      <select class="form-select" id="importCategory"></select>
+    </div>
+    <div>
+      <label class="form-label">Common Label (optional)</label>
+      <input type="text" class="form-input" id="importCommonLabel" placeholder="e.g. TERM-2 2025" value="${prevLabel.replace(/"/g,'&quot;')}">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">Labels the Overall ranking from the Total column when enabled.</div>
+    </div>
+    <div>
+      <label class="form-label">Overall Ranking</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="importIncludeTotal" ${prevTotal ? 'checked' : ''}> Also rank by Total column
+      </label>
+    </div>`;
+  document.getElementById('importActions').style.display = 'grid';
+  document.getElementById('importBtn').style.display = 'block';
+
+  const catSelect = document.getElementById('importCategory');
+  catSelect.innerHTML = Object.keys(CATS).map(c => `<option value="${c}">${CAT_LABELS[c] || c}</option>`).join('');
+  catSelect.value = prevCat || 'Academics';
+}
+
+function renderHouseWisePreview() {
+  const headers = rawExcelData[0] || [];
+  const allDataRows = rawExcelData.slice(1);
+  let stuHtml = `<div style="padding:10px 14px;background:var(--card2);font-weight:700;font-size:0.8rem;color:var(--accent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span>House Data — ${allDataRows.length} rows</span>
+  </div>`;
+  stuHtml += `<table style="width:100%;border-collapse:collapse;font-size:0.75rem">`;
+  stuHtml += `<thead><tr style="color:var(--muted)">`;
+  headers.forEach((h, i) => {
+    let tag = '';
+    if(i === houseWiseCols.house) tag = ' [House]';
+    if(houseWiseCols.grades.some(g => g.i === i)) tag = ' [Grade]';
+    if(i === houseWiseCols.total) tag = ' [Total]';
+    stuHtml += `<th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">${h}${tag}</th>`;
+  });
+  stuHtml += `</tr></thead><tbody>`;
+
+  const maxPreviewRows = 500;
+  const displayRows = allDataRows.slice(0, maxPreviewRows);
+  displayRows.forEach(row => {
+    stuHtml += '<tr>';
+    headers.forEach((h, i) => {
+      let display = row[i] ?? '';
+      let style = 'padding:7px 10px;border-bottom:1px solid var(--border)';
+      if(houseWiseCols.grades.some(g => g.i === i)) style += ';color:var(--accent);font-weight:600';
+      if(i === houseWiseCols.total) style += ';font-weight:700';
+      if(i === houseWiseCols.house) {
+        const hv = String(display).trim();
+        if(HOUSES.includes(hv)) display = `<span style="color:${HCOLOR[hv]};font-weight:600">${display}</span>`;
+      }
+      stuHtml += `<td style="${style}">${display}</td>`;
+    });
+    stuHtml += '</tr>';
+  });
+  stuHtml += '</tbody></table>';
+  document.getElementById('studentDataTable').innerHTML = stuHtml;
+  document.getElementById('studentDataSection').style.display = 'block';
+}
+
+function calculateHouseWiseResults() {
+  const collected = collectHouseWiseData();
+  const acadPts = CATS['Academics'].points;
+  const totalOf = (h) => {
+    const rec = collected.houses[h];
+    if(!rec) return 0;
+    if(rec.__total != null) return rec.__total;
+    return collected.grades.reduce((s, g) => s + (rec[g] || 0), 0);
+  };
+
+  const overallHouses = HOUSES.map(h => ({ house: h, v: totalOf(h) })).filter(x => x.v > 0);
+  overallHouses.sort((a, b) => b.v - a.v);
+  overallHouses.forEach((x, i) => x.position = i + 1);
+
+  document.getElementById('importResultsHeader').innerHTML = 'Overall Results — ' + (collected.hasTotalColumn ? 'Total Marks' : 'Sum of Grades');
+  document.getElementById('resultsGrid').innerHTML = overallHouses.map(r => `
+    <div style="background:var(--card2);border-radius:12px;padding:16px;text-align:center;border:2px solid ${HCOLOR[r.house]}30">
+      <div style="font-size:1.5rem;margin-bottom:4px">${r.position === 1 ? '🥇' : r.position === 2 ? '🥈' : r.position === 3 ? '🥉' : '#' + r.position}</div>
+      <div style="font-weight:700;color:${HCOLOR[r.house]};margin-bottom:4px">${r.house}</div>
+      <div style="font-size:1.5rem;font-weight:900;color:var(--accent)">${r.v} marks</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">Total</div>
+    </div>
+  `).join('') || '<div style="color:var(--muted);font-size:0.85rem;text-align:center;padding:20px">No data to rank overall.</div>';
+
+  if(collected.grades.length > 0) {
+    const rankMap = {};
+    collected.grades.forEach(g => {
+      const list = HOUSES.map(h => ({ house: h, v: collected.houses[h] ? collected.houses[h][g.key] || 0 : 0 }))
+        .filter(x => x.v > 0)
+        .sort((a, b) => b.v - a.v);
+      const m = {};
+      list.forEach((x, i) => { m[x.house] = { pos: i + 1, pts: acadPts[i] || 0 }; });
+      rankMap[g.key] = m;
+    });
+    let html = `<div style="overflow-x:auto;border:1px solid var(--border);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+        <thead><tr style="color:var(--muted);background:var(--card2)">
+          <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;letter-spacing:1px">House</th>`;
+    collected.grades.forEach(g => {
+      html += `<th style="padding:10px 12px;text-align:center;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;letter-spacing:1px">${g.label}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    HOUSES.forEach(h => {
+      html += `<tr>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);font-weight:600;color:${HCOLOR[h]};text-align:left">${h}</td>`;
+      collected.grades.forEach(g => {
+        const rec = collected.houses[h];
+        const v = rec ? rec[g.key] || 0 : 0;
+        const r = (rankMap[g.key] || {})[h];
+        html += `<td style="padding:9px 12px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">${v === 0 ? '<span style="color:var(--muted);font-weight:400">—</span>' : v}`;
+        if(r && r.pts > 0) html += `<div style="font-size:0.65rem;color:${HCOLOR[h]};font-weight:700">${r.pos === 1 ? '🥇' : r.pos === 2 ? '🥈' : r.pos === 3 ? '🥉' : '#' + r.pos} +${r.pts}</div>`;
+        html += `</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    document.getElementById('gradeResultsGrid').innerHTML = html;
+    document.getElementById('gradeResultsWrap').style.display = 'block';
+  } else {
+    document.getElementById('gradeResultsWrap').style.display = 'none';
+  }
+
+  window._houseWiseCollected = collected;
+  document.getElementById('houseResults').style.display = 'block';
+}
+
+function buildHouseWiseEntries(collected) {
+  const acadPts = CATS['Academics'].points;
+  const examName = document.getElementById('importExamName').value.trim() || 'House-wise Import';
+  const category = document.getElementById('importCategory').value || 'Academics';
+  const commonLabel = document.getElementById('importCommonLabel').value.trim();
+  const includeTotalEl = document.getElementById('importIncludeTotal');
+  const includeTotal = includeTotalEl ? includeTotalEl.checked : false;
+  let idCounter = Date.now();
+  const newEntries = [];
+
+  const totalOf = (h) => {
+    const rec = collected.houses[h];
+    if(!rec) return 0;
+    if(rec.__total != null) return rec.__total;
+    return collected.grades.reduce((s, g) => s + (rec[g] || 0), 0);
+  };
+
+  const rankAndPush = (getVal, subCategory) => {
+    const list = HOUSES.map(h => ({ house: h, v: getVal(h) }))
+      .filter(x => x.v > 0)
+      .sort((a, b) => b.v - a.v);
+    list.forEach((x, i) => {
+      const pts = acadPts[i] || 0;
+      if(pts > 0) {
+        newEntries.push({
+          id: (idCounter++).toString(36) + Math.random().toString(36).substr(2, 5),
+          house: x.house,
+          category: category,
+          subCategory: subCategory,
+          position: i + 1,
+          points: pts,
+          event: examName,
+          note: `Avg: ${x.v} | Total: ${x.v} marks`,
+          date: new Date().toISOString(),
+          exam: examName
+        });
+      }
+    });
+  };
+
+  collected.grades.forEach(g => {
+    rankAndPush(h => (collected.houses[h] ? collected.houses[h][g.key] || 0 : 0), g.label);
+  });
+
+  if(includeTotal || commonLabel) {
+    rankAndPush(totalOf, commonLabel || 'Overall');
+  }
+
+  return newEntries;
+}
+
+async function importHouseWiseData() {
+  const collected = window._houseWiseCollected || collectHouseWiseData();
+  if(!collected.grades.length && !collected.hasTotalColumn) {
+    showToast('No grade or total columns found in the file', 'error');
+    return;
+  }
+  const newEntries = buildHouseWiseEntries(collected);
+  if(newEntries.length === 0) {
+    showToast('No valid data to import (no ranks could be computed)', 'error');
+    return;
+  }
+  const examName = document.getElementById('importExamName').value.trim() || 'House-wise Import';
+  const category = document.getElementById('importCategory').value || 'Academics';
+  try {
+    showSaving();
+    await apiPost({ action: 'importExcelData', entries: newEntries, students: [], examName, category });
+    entries.push(...newEntries);
+    clearFile();
+    render();
+    showSaved();
+    showToast(`Imported ${newEntries.length} house ranks from "${examName}"`, 'success');
+  } catch(err) {
+    showToast('Failed to import: ' + err.message, 'error');
+  }
+}
+
 // Drop zone handlers
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('excelFileInput');
@@ -4869,21 +5177,39 @@ function handleFile(file) {
       fileInfo.innerHTML = `<span style="color:var(--success)">📎</span> ${file.name} (${(file.size/1024).toFixed(1)} KB) — ${rawExcelData.length - 1} rows detected`;
       renderFileList();
 
-      autoDetectColumns();
+      if(importType === 'house') {
+        houseWiseCols = detectHouseWiseColumns(rawExcelData[0]);
+        renderHouseWiseActions();
+        renderHouseWisePreview();
 
-      // Validate required columns
-      const warnings = [];
-      if(columnMapping.name === -1) warnings.push('Student Name');
-      if(columnMapping.house === -1) warnings.push('House');
-      if(columnMapping.subjects.length === 0) warnings.push('Subject marks');
-      if(warnings.length > 0) {
-        fileInfo.innerHTML += `<div style="margin-top:8px;padding:8px 12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.75rem;color:var(--gold)">
-          ⚠️ Could not auto-detect: <b>${warnings.join(', ')}</b>. Please use "Change Column Mapping" to fix.
-        </div>`;
+        const warnings = [];
+        if(houseWiseCols.house === -1) warnings.push('House');
+        if(houseWiseCols.grades.length === 0 && houseWiseCols.total === -1) warnings.push('Grade/Total columns');
+        if(warnings.length > 0) {
+          fileInfo.innerHTML += `<div style="margin-top:8px;padding:8px 12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.75rem;color:var(--gold)">
+            ⚠️ Could not auto-detect: <b>${warnings.join(', ')}</b>. Expected one row per House, grade columns like "Grade 6" / "6" / "VI", and an optional "Total" column.
+          </div>`;
+        }
+
+        calculateHouseWiseResults();
+        showToast(`Loaded house-wise data from ${workbook.SheetNames[0]}` + (window._pendingFiles.length > 1 ? ` — ${totalRows} rows across ${window._pendingFiles.length} files` : ''), 'success');
+      } else {
+        autoDetectColumns();
+
+        // Validate required columns
+        const warnings = [];
+        if(columnMapping.name === -1) warnings.push('Student Name');
+        if(columnMapping.house === -1) warnings.push('House');
+        if(columnMapping.subjects.length === 0) warnings.push('Subject marks');
+        if(warnings.length > 0) {
+          fileInfo.innerHTML += `<div style="margin-top:8px;padding:8px 12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.75rem;color:var(--gold)">
+            ⚠️ Could not auto-detect: <b>${warnings.join(', ')}</b>. Please use "Change Column Mapping" to fix.
+          </div>`;
+        }
+
+        renderPreview();
+        showToast(`Loaded ${rawExcelData.length - 1} rows from ${workbook.SheetNames[0]}` + (window._pendingFiles.length > 1 ? ` — ${totalRows} total across ${window._pendingFiles.length} files` : ''), 'success');
       }
-
-      renderPreview();
-      showToast(`Loaded ${rawExcelData.length - 1} rows from ${workbook.SheetNames[0]}` + (window._pendingFiles.length > 1 ? ` — ${totalRows} total across ${window._pendingFiles.length} files` : ''), 'success');
     } catch(err) {
       showToast('Failed to parse file: ' + err.message, 'error');
       fileInfo.innerHTML = `<span style="color:var(--danger)">✕</span> Failed to parse: ${err.message}`;
@@ -4931,6 +5257,10 @@ function removeFile(fileName) {
   renderFileList();
   if(window._pendingFiles.length === 0) {
     clearFile();
+  } else if(importType === 'house') {
+    houseWiseCols = detectHouseWiseColumns(rawExcelData[0]);
+    renderHouseWisePreview();
+    calculateHouseWiseResults();
   } else {
     autoDetectColumns();
     renderPreview();
@@ -5167,6 +5497,7 @@ function calculateHouseResults() {
 }
 
 async function importData() {
+  if(importType === 'house') return importHouseWiseData();
   const results = window._importResults;
   if(!results || results.length === 0) { showToast('No data to import', 'error'); return; }
 
@@ -5354,6 +5685,8 @@ function clearFile() {
   window._pendingFiles = [];
   columnMapping = { name: -1, house: -1, marks: -1, class: -1, section: -1, sNo: -1, admNo: -1, subjects: [], total: -1 };
   window._importResults = null;
+  houseWiseCols = { house: -1, total: -1, grades: [] };
+  window._houseWiseCollected = null;
   saveData('vivaHouseMapping', columnMapping);
   document.getElementById('fileInfo').style.display = 'none';
   document.getElementById('fileList').style.display = 'none';
@@ -5361,6 +5694,8 @@ function clearFile() {
   document.getElementById('importActions').style.display = 'none';
   document.getElementById('importBtn').style.display = 'none';
   document.getElementById('houseResults').style.display = 'none';
+  document.getElementById('gradeResultsWrap').style.display = 'none';
+  document.getElementById('gradeResultsGrid').innerHTML = '';
   document.getElementById('studentDataSection').style.display = 'none';
   document.getElementById('excelFileInput').value = '';
 }

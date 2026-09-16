@@ -4716,11 +4716,12 @@ async function deleteEntry(id) {
     
     entries = entries.filter(e => e.id !== id);
 
-    // Remove student data for this house+exam
+    // Remove student data for this house+exam (only if such records exist)
     const exam = deleted.exam || deleted.event;
-    if(exam && deleted.category === 'Academics') {
+    const matchingStudents = exam && studentData.some(s => s.house === deleted.house && s.exam === exam);
+    if(exam && deleted.category === 'Academics' && matchingStudents) {
       studentData = studentData.filter(s => !(s.house === deleted.house && s.exam === exam));
-      await apiPost({action: 'deleteStudentData', house: deleted.house, cls: undefined});
+      await apiPost({action: 'deleteStudentData', house: deleted.house, cls: undefined, exam: exam});
     }
 
     render();

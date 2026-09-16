@@ -4903,7 +4903,11 @@ function collectHouseWiseData() {
     });
   });
   gradeKeys.sort((a, b) => a - b);
-  return { houses: byHouse, grades: gradeKeys, hasTotalColumn };
+  return {
+    houses: byHouse,
+    grades: gradeKeys.map(key => ({ key, label: gradeLabel(key) })),
+    hasTotalColumn
+  };
 }
 
 function renderHouseWiseActions() {
@@ -4987,7 +4991,7 @@ function calculateHouseWiseResults() {
     const rec = collected.houses[h];
     if(!rec) return 0;
     if(rec.__total != null) return rec.__total;
-    return collected.grades.reduce((s, g) => s + (rec[g] || 0), 0);
+    return collected.grades.reduce((s, g) => s + (rec[g.key] || 0), 0);
   };
 
   const overallHouses = HOUSES.map(h => ({ house: h, v: totalOf(h) })).filter(x => x.v > 0);
@@ -5060,7 +5064,7 @@ function buildHouseWiseEntries(collected) {
     const rec = collected.houses[h];
     if(!rec) return 0;
     if(rec.__total != null) return rec.__total;
-    return collected.grades.reduce((s, g) => s + (rec[g] || 0), 0);
+    return collected.grades.reduce((s, g) => s + (rec[g.key] || 0), 0);
   };
 
   const rankAndPush = (getVal, subCategory) => {

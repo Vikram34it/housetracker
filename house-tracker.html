@@ -1617,6 +1617,7 @@
   <button class="nav-tab active" data-view="dashboard">Dashboard</button>
   <button class="nav-tab admin-only" data-view="import">Excel Import</button>
   <button class="nav-tab" data-view="houses">Houses</button>
+  <button class="nav-tab" data-view="asof">As-of</button>
   <button class="nav-tab" data-view="monthly">Monthly</button>
   <button class="nav-tab" data-view="awards">Awards</button>
   <button class="nav-tab" data-view="history">History</button>
@@ -1742,6 +1743,31 @@
         <button class="btn btn-ghost btn-sm" onclick="printHouseEvents()">🖨️ Print</button>
       </div>
       <div style="overflow-x:auto" id="houseEventsTableContainer"></div>
+    </div>
+  </div>
+
+  <!-- AS-OF VIEW (whole-season or cumulative up to a chosen month) -->
+  <div class="view" id="asofView">
+    <div class="section-header">
+      <div class="section-title">Season Summary — Cumulative (As of)</div>
+      <select class="form-select" id="asofMonthPicker" onchange="setAsOfMonth(this.value)" style="width:auto;padding:8px 14px;font-size:0.82rem;font-weight:600;border-radius:999px"></select>
+    </div>
+    <div class="house-detail-grid" id="asofHouseDetails"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:24px;margin-bottom:4px;gap:8px">
+      <button class="btn btn-ghost btn-sm no-print" onclick="printAcademicAnalytics('asof','color')">🖨️ Color</button>
+      <button class="btn btn-ghost btn-sm no-print" onclick="printAcademicAnalytics('asof','bw')">⬛ B&amp;W</button>
+    </div>
+    <div id="asofAcademicSummaryContainer"></div>
+    <div id="asofCategoryMonthlyContainer"></div>
+    <div style="margin-top:28px">
+      <div class="section-header">
+        <div class="section-title">Comparative Event Summary</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="printAsOfHouseEvents('color')">🖨️ Color</button>
+          <button class="btn btn-ghost btn-sm" onclick="printAsOfHouseEvents('bw')">⬛ B&amp;W</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto" id="asofHouseEventsTableContainer"></div>
     </div>
   </div>
 
@@ -2655,6 +2681,7 @@ function render() {
   renderHistory();
   renderNavTabs();
   renderCategoryMonthly();
+  renderAsOfView();
   toggleAcademicPrintButtons();
 }
 
@@ -2731,7 +2758,7 @@ function windowMonthNameOf(dateStr) {
 }
 
 // Start year (July) of the academic year that the data belongs to.
-function acadYearStartYear() {
+function acadYearStartYear(ent = entries, st = studentData) {
   let sy = 0;
   const bump = (dateStr) => {
     if(!dateStr) return;
@@ -2741,12 +2768,24 @@ function acadYearStartYear() {
     const s = m >= 7 ? y : y - 1;
     if(s > sy) sy = s;
   };
-  entries.forEach(e => bump(e.date));
-  (studentData || []).forEach(s => bump(s.date));
+  (ent || []).forEach(e => bump(e.date));
+  (st || []).forEach(s => bump(s.date));
   return sy || new Date().getUTCFullYear();
 }
 
-function getMonthlyCategoryData() {
+// Map of ACAD_YEAR_MONTHS (July→June, in order) to their monthly windows.
+function getAcadYearWindows(ent = entries, st = studentData) {
+  const startYear = acadYearStartYear(ent, st);
+  const windows = {};
+  ACAD_YEAR_MONTHS.forEach((m, i) => {
+    const mo = ((7 + i - 1) % 12) + 1;
+    const y = startYear + Math.floor((7 + i - 1) / 12);
+    windows[m] = getWindowForKey(`${y}-${String(mo).padStart(2, '0')}`);
+  });
+  return { startYear, windows };
+}
+
+function getMonthlyCategoryData(ent = entries, st = studentData) {
   const data = {};
   Object.keys(CATS).forEach(cat => {
     data[cat] = {};
@@ -2756,16 +2795,10 @@ function getMonthlyCategoryData() {
     });
   });
 
-  const startYear = acadYearStartYear();
-  const windows = {};
-  ACAD_YEAR_MONTHS.forEach((m, i) => {
-    const mo = ((7 + i - 1) % 12) + 1;
-    const y = startYear + Math.floor((7 + i - 1) / 12);
-    windows[m] = getWindowForKey(`${y}-${String(mo).padStart(2, '0')}`);
-  });
+  const { startYear, windows } = getAcadYearWindows(ent, st);
 
   // Non-academic categories: normal (uncapped) points summed per monthly window.
-  entries.forEach(e => {
+  (ent || []).forEach(e => {
     if(e.category === 'Academics') return;
     const m = windowMonthNameOf(e.date);
     if(!m || !data[e.category] || !data[e.category][m]) return;
@@ -2780,8 +2813,8 @@ function getMonthlyCategoryData() {
     const winEntries = getEntriesForWindow(win);
     const startStr = win.start.toISOString().slice(0, 10);
     const endStr = win.end.toISOString().slice(0, 10);
-    const winStudents = (studentData && studentData.length > 0)
-      ? studentData.filter(s => {
+    const winStudents = (st && st.length > 0)
+      ? st.filter(s => {
           if(!s.date) return false;
           const d = s.date.slice(0, 10);
           return d >= startStr && d < endStr;
@@ -2800,17 +2833,21 @@ function getMonthlyCategoryData() {
   return data;
 }
 
-function renderCategoryMonthly() {
-  const container = document.getElementById('categoryMonthlyContainer');
+function renderCategoryMonthly(containerId = 'categoryMonthlyContainer', ent = entries, st = studentData, asOfYm = null) {
+  const container = document.getElementById(containerId);
   if(!container) return;
-  const data = getMonthlyCategoryData();
+  const data = getMonthlyCategoryData(ent, st);
+
+  // For an as-of snapshot only render months at or before the cutoff.
+  const { windows } = getAcadYearWindows(ent, st);
+  const shownMonths = asOfYm ? ACAD_YEAR_MONTHS.filter(m => windowKeyOf(windows[m]) <= asOfYm) : ACAD_YEAR_MONTHS;
 
   const cards = Object.keys(CATS).map(cat => {
     const houseTotals = {};
     let grandTotal = 0;
     HOUSES.forEach(h => houseTotals[h] = 0);
 
-    const body = ACAD_YEAR_MONTHS.map(m => {
+    const body = shownMonths.map(m => {
       let rowTotal = 0;
       const cells = HOUSES.map(h => {
         const v = data[cat][m][h];
@@ -2861,7 +2898,7 @@ function renderCategoryMonthly() {
       <td class="house-cell-val" style="color:var(--muted);font-weight:600">–</td>
     </tr>`;
 
-    const hasData = grandTotal !== 0 || entries.some(e => e.category === cat);
+    const hasData = grandTotal !== 0 || (ent || []).some(e => e.category === cat);
     const bodyHtml = hasData ? body + totalRow + cappedRow : `<tr><td colspan="${HOUSES.length + 2}" class="cat-monthly-empty">No points recorded in this category yet</td></tr>`;
 
     return `
@@ -2886,7 +2923,8 @@ function renderCategoryMonthly() {
   }).join('');
 
   // Overall position card: sum of each category's capped points, ranked 1st-5th.
-  const overall = getCategoryRankedStandingsFor(entries, { acadCumulative: true });
+  const overallAcad = computeAcademicRankingData(ent, st);
+  const overall = getCategoryRankedStandingsFor(ent, { acadCumulative: true, acadCumulativeValues: overallAcad.hasData ? overallAcad.cumulative : null });
   const overallByHouse = {};
   overall.forEach(s => overallByHouse[s.house] = s);
   const catKeys = Object.keys(CATS);
@@ -2944,8 +2982,8 @@ function renderCategoryMonthly() {
       <div class="section-header">
         <div class="section-title">Category-wise Monthly Points</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-ghost btn-sm" onclick="printCategoryMonthly('color')">🖨️ Color</button>
-          <button class="btn btn-ghost btn-sm" onclick="printCategoryMonthly('bw')">⬛ B&amp;W</button>
+          <button class="btn btn-ghost btn-sm" onclick="printCategoryMonthly('color','${containerId}')">🖨️ Color</button>
+          <button class="btn btn-ghost btn-sm" onclick="printCategoryMonthly('bw','${containerId}')">⬛ B&amp;W</button>
         </div>
       </div>
       ${cards}
@@ -2953,9 +2991,9 @@ function renderCategoryMonthly() {
     </div>`;
 }
 
-function printCategoryMonthly(mode) {
+function printCategoryMonthly(mode, containerId = 'categoryMonthlyContainer') {
   const bw = mode === 'bw';
-  const container = document.getElementById('categoryMonthlyContainer');
+  const container = document.getElementById(containerId);
   if(!container) return;
   const w = window.open('', '_blank', 'width=1100,height=750');
   if(!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
@@ -3063,7 +3101,7 @@ function renderHouseDetailsFor(standings, containerId, opts = {}) {
         </div>
         <div class="house-detail-total" style="color:${HCOLOR[h.house]}">${h.total}</div>
         <div class="category-bars">${bars}</div>
-        ${opts.showButton && entries.some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
+        ${opts.showButton && (opts.entries || entries).some(e => e.house === h.house) ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;border:1px solid ${HCOLOR[h.house]}40;color:${HCOLOR[h.house]}" onclick="openHouseDetail('${h.house}')">📋 View Details</button>` : ''}
       </div>`;
   }).join('');
 }
@@ -3218,15 +3256,16 @@ function printHouseEvents() {
   setTimeout(() => { w.print(); }, 300);
 }
 
-// Print the 🏆 Inter-House Performance Analytics table (Houses or Monthly scope).
+// Print the 🏆 Inter-House Performance Analytics table (Houses / Monthly / As-of scope).
 // mode: 'color' (colored bands + house colors) or 'bw' (pure black & white).
 function printAcademicAnalytics(scope, mode) {
   const isMonthly = scope === 'monthly';
+  const isAsOf = scope === 'asof';
   const bw = mode === 'bw';
-  const container = document.getElementById(isMonthly ? 'monthlyAcademicSummaryContainer' : 'academicSummaryContainer');
+  const container = document.getElementById(isMonthly ? 'monthlyAcademicSummaryContainer' : isAsOf ? 'asofAcademicSummaryContainer' : 'academicSummaryContainer');
   if(!container || !container.innerHTML.trim()) { showToast('No Inter-House Performance Analytics data to print', 'error'); return; }
   const title = '🏆 Inter-House Performance Analytics';
-  const monthLabel = isMonthly ? ((document.getElementById('monthlyWindowLabel') || {}).textContent || '') : '';
+  const monthLabel = isMonthly ? ((document.getElementById('monthlyWindowLabel') || {}).textContent || '') : isAsOf ? asOfLabel() : '';
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
   w.document.write(`<!DOCTYPE html><html><head><title>${title}${monthLabel ? ' (' + monthLabel + ')' : ''}</title>
@@ -3259,7 +3298,7 @@ function printAcademicAnalytics(scope, mode) {
 
 // Show/hide the "Print Analytics" buttons depending on whether academic data exists.
 function toggleAcademicPrintButtons() {
-  ['academicSummaryContainer', 'monthlyAcademicSummaryContainer'].forEach(id => {
+  ['academicSummaryContainer', 'monthlyAcademicSummaryContainer', 'asofAcademicSummaryContainer'].forEach(id => {
     const c = document.getElementById(id);
     const wrap = c && c.previousElementSibling;
     if(wrap && wrap.querySelector) {
@@ -3269,12 +3308,12 @@ function toggleAcademicPrintButtons() {
   });
 }
 
-function printMonthlyHouseEvents(mode) {
+function printMonthlyHouseEvents(mode, opts = {}) {
   const bw = mode === 'bw';
-  const title = 'Monthly House-wise Event Summary';
-  const monthLabel = (document.getElementById('monthlyWindowLabel') || {}).textContent || '';
-  const eventTableHtml = document.getElementById('monthlyHouseEventsTable').outerHTML;
-  const acadContainer = document.getElementById('monthlyAcademicSummaryContainer');
+  const title = opts.title || 'Monthly House-wise Event Summary';
+  const monthLabel = opts.monthLabel !== undefined ? opts.monthLabel : ((document.getElementById('monthlyWindowLabel') || {}).textContent || '');
+  const eventTableHtml = document.getElementById(opts.tableId || 'monthlyHouseEventsTable').outerHTML;
+  const acadContainer = document.getElementById(opts.acadContainerId || 'monthlyAcademicSummaryContainer');
   const acadHtml = acadContainer && acadContainer.innerHTML.trim() ? acadContainer.innerHTML : '';
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
@@ -3309,6 +3348,85 @@ function printMonthlyHouseEvents(mode) {
   w.document.close();
   w.focus();
   setTimeout(() => { w.print(); }, 300);
+}
+
+function printAsOfHouseEvents(mode) {
+  printMonthlyHouseEvents(mode, {
+    title: 'Season Summary — Cumulative (As of)',
+    monthLabel: asOfLabel(),
+    tableId: 'asofHouseEventsTable',
+    acadContainerId: 'asofAcademicSummaryContainer'
+  });
+}
+
+// ===== AS-OF VIEW (whole season or cumulative up to a chosen month) =====
+let asOfMonth = 'all';   // 'all' or 'YYYY-MM' inclusive cutoff
+
+function asOfLabel() {
+  if(!asOfMonth || asOfMonth === 'all') return 'Whole season';
+  const [y, m] = String(asOfMonth).split('-').map(Number);
+  return 'As of ' + new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+function getAsOfEntries() {
+  if(!asOfMonth || asOfMonth === 'all') return entries;
+  const ym = String(asOfMonth);
+  return entries.filter(e => !e.date || String(e.date).slice(0, 7) <= ym);
+}
+
+function getAsOfStudents() {
+  if(!asOfMonth || asOfMonth === 'all') return (studentData || []);
+  const ym = String(asOfMonth);
+  return (studentData || []).filter(s => !s.date || String(s.date).slice(0, 7) <= ym);
+}
+
+function getAsOfAvailableMonths() {
+  const keys = new Set();
+  entries.forEach(e => { if(e.date && String(e.date).slice(0, 7)) keys.add(String(e.date).slice(0, 7)); });
+  (studentData || []).forEach(s => { if(s.date && String(s.date).slice(0, 7)) keys.add(String(s.date).slice(0, 7)); });
+  return [...keys].sort().reverse();
+}
+
+function renderAsOfMonthPicker() {
+  const sel = document.getElementById('asofMonthPicker');
+  if(!sel) return;
+  const months = getAsOfAvailableMonths();
+  sel.innerHTML = '<option value="all">Whole season</option>' + months.map(ym => {
+    const [y, m] = ym.split('-').map(Number);
+    const lbl = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    return `<option value="${ym}"${String(ym) === String(asOfMonth) ? ' selected' : ''}>${lbl}</option>`;
+  }).join('');
+}
+
+function setAsOfMonth(ym) {
+  asOfMonth = ym;
+  renderAsOfView();
+}
+
+function renderAsOfView() {
+  const ent = getAsOfEntries();
+  const st = getAsOfStudents();
+
+  // Inter-House Performance Analytics as of the cutoff
+  const acad = computeAcademicRankingData(ent, st);
+  const acadContainer = document.getElementById('asofAcademicSummaryContainer');
+  if(acadContainer) {
+    acadContainer.innerHTML = '';
+    if(acad.hasData) renderAcademicRankingTable(acadContainer, acad);
+  }
+
+  // Standings / house cards as of the cutoff
+  const standings = getCategoryRankedStandingsFor(ent, { acadCumulative: true, acadCumulativeValues: acad.hasData ? acad.cumulative : null });
+  renderHouseDetailsFor(standings, 'asofHouseDetails', { showButton: true, entries: ent });
+
+  // Category-wise monthly as of the cutoff (only months ≤ cutoff are shown)
+  renderCategoryMonthly('asofCategoryMonthlyContainer', ent, st, asOfMonth === 'all' ? null : asOfMonth);
+
+  // Comparative event summary as of the cutoff
+  renderHouseEventsTableFor(ent, 'asofHouseEventsTableContainer', { tableId: 'asofHouseEventsTable', acadCumulativeValues: acad.hasData ? acad.cumulative : null });
+
+  renderAsOfMonthPicker();
+  toggleAcademicPrintButtons();
 }
 
 function computeOverallData(acadEntries) {
@@ -4893,6 +5011,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById(activeView+'View').classList.add('active');
     renderNavTabs();
     if (activeView === 'monthly') renderMonthlyStats();
+    if (activeView === 'asof') renderAsOfView();
   });
 });
 

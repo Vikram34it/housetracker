@@ -73,7 +73,7 @@ function doPost(e) {
       case 'deleteEntries':
         return jsonResponse(deleteEntries(data.ids));
       case 'deleteStudentData':
-        return jsonResponse(deleteStudentData(data.house, data.cls));
+        return jsonResponse(deleteStudentData(data.house, data.cls, data.exam));
       case 'resetAll':
         return jsonResponse(resetAll());
       case 'updateConfig':
@@ -373,14 +373,17 @@ function addStudents(students) {
   return {success: true, count: count, skipped: skipped};
 }
 
-function deleteStudentData(house, cls) {
+function deleteStudentData(house, cls, exam) {
   const sheet = getSheet(SHEET_NAME_STUDENTS);
   const data = sheet.getDataRange().getValues();
   let deleted = 0;
-  
+
+  // Students sheet columns: 0=Name, 1=House, 2=Class, 3=Section, 4=Subjects, 5=Total, 6=Exam, 7=Date
   const rowsToDelete = [];
   for(let i = 1; i < data.length; i++) {
-    if(data[i][1] === house && (cls === undefined || data[i][2] === cls)) {
+    if(data[i][1] === house &&
+       (cls === undefined || data[i][2] === cls) &&
+       (exam === undefined || data[i][6] === exam)) {
       rowsToDelete.push(i + 1);
     }
   }

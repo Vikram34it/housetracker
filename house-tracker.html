@@ -2124,16 +2124,16 @@ function gradeOf(v) {
   const s = String(v).trim().toUpperCase();
   if(!s) return null;
   // PP1 → -2, PP2 → -1 (sort before Grade 1)
-  const pp = s.match(/^PP\s*(\d+)$/);
-  if(pp) {
-    const n = parseInt(pp[1], 10);
-    if(n >= 1 && n <= 2) return n - 3;
-    return null;
-  }
-  const token = s.split(/[^0-9XIV]+/).find(p => p.length > 0);
-  if(!token) return null;
-  const roman = { VI:6, VII:7, VIII:8, IX:9, X:10, XI:11, XII:12 };
-  const g = roman[token] || parseInt(token, 10);
+  const pp = s.match(/^PP\s*([12])$/);
+  if(pp) return parseInt(pp[1], 10) - 3;
+  // Valid grade labels are anchored expressions like "Grade 6", "6", "6A", "VI", "10th",
+  // "Class 10". Exam/event names such as "PT-1", "TERM-2", "SA-1" or "UNIT-1" deliberately
+  // do NOT match — the number must appear right after the (optional) keyword, not after
+  // arbitrary words like "PT"/"TERM" (which previously mis-parsed as Grade 1 / Grade 2).
+  const m = s.match(/^(?:GRADE|CLASS|STD|STANDARD)?[\s:.\-]*(\d{1,2}|XII|XI|IX|VIII|VII|VI|X)(?:ST|ND|RD|TH)?[\s:.\-]*[A-Z]?[\s:.\-]*(?:GRADE|CLASS|STD|STANDARD)?$/);
+  if(!m) return null;
+  const token = m[1];
+  const g = /^\d+$/.test(token) ? parseInt(token, 10) : ({ VI:6, VII:7, VIII:8, IX:9, X:10, XI:11, XII:12 })[token];
   return (g >= 1 && g <= 12) ? g : null;
 }
 

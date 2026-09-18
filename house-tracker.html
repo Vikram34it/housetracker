@@ -1740,7 +1740,10 @@
     <div style="margin-top:28px">
       <div class="section-header">
         <div class="section-title">Comparative Event Summary</div>
-        <button class="btn btn-ghost btn-sm" onclick="printHouseEvents()">🖨️ Print</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="printHouseEvents('color')">🖨️ Color</button>
+          <button class="btn btn-ghost btn-sm" onclick="printHouseEvents('bw')">⬛ B&amp;W</button>
+        </div>
       </div>
       <div style="overflow-x:auto" id="houseEventsTableContainer"></div>
     </div>
@@ -3223,7 +3226,8 @@ function renderHouseEventsTableFor(entriesArr, containerId, opts = {}) {
   container.innerHTML = html;
 }
 
-function printHouseEvents() {
+function printHouseEvents(mode) {
+  const bw = mode === 'bw';
   const title = 'House-wise Event Summary';
   const eventTableHtml = document.getElementById('houseEventsTable').outerHTML;
   const acadContainer = document.getElementById('academicSummaryContainer');
@@ -3232,22 +3236,29 @@ function printHouseEvents() {
   if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
   w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>
-      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
-      h1 { font-size: 22px; margin: 0 0 6px; }
-      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+      body { font-family: Arial, sans-serif; padding: 30px; color: ${bw ? '#000' : '#1e293b'}; }
+      h1 { font-size: 22px; margin: 0 0 6px; color: ${bw ? '#000' : '#1e293b'}; }
+      .sub { color: ${bw ? '#555' : '#64748b'}; font-size: 12px; margin-bottom: 20px; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-      td { padding: 7px 10px; border: 1px solid #cbd5e1; }
-      tr:has(td[colspan]) td { font-weight: 700; background: #f1f5f9; }
+      th { background: ${bw ? '#fff' : '#e2e8f0'}; color: ${bw ? '#000' : '#1e293b'}; text-align: left; padding: 8px 10px; border: 1px solid ${bw ? '#000' : '#94a3b8'}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      td { padding: 7px 10px; border: 1px solid ${bw ? '#000' : '#cbd5e1'}; }
+      tr:has(td[colspan]) td { font-weight: 700; background: ${bw ? '#eee' : '#f1f5f9'}; }
       .academic-summary { margin-bottom: 30px; }
-      .academic-summary-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+      .academic-summary-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: ${bw ? '#000' : '#1e293b'}; }
       .academic-summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      .academic-summary-table th { background: #e2e8f0; text-align: left; padding: 8px 10px; border: 1px solid #94a3b8; font-size: 11px; text-transform: uppercase; }
-      .academic-summary-table td { padding: 7px 10px; border: 1px solid #cbd5e1; }
-      @media print { .no-print { display: none; } }
+      .academic-summary-table th { background: ${bw ? '#fff' : '#e2e8f0'}; color: ${bw ? '#000' : '#1e293b'}; text-align: left; padding: 8px 10px; border: 1px solid ${bw ? '#000' : '#94a3b8'}; font-size: 11px; text-transform: uppercase; }
+      .academic-summary-table td { padding: 7px 10px; border: 1px solid ${bw ? '#000' : '#cbd5e1'}; }
+      @media print { .no-print { display: none; } body * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      ${bw ? `
+      /* Black & white: strip every color left by inline styles */
+      table * { color: #000 !important; }
+      table th { background: #fff !important; border: 1px solid #000 !important; }
+      table td { background: #fff !important; border: 1px solid #000 !important; }
+      tr[style] td { background: #fff !important; border-top: 2px solid #000 !important; }
+      ` : ''}
     </style></head><body>
     <h1>${title}</h1>
-    <div class="sub">Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
+    <div class="sub">${bw ? 'Black & White' : 'Colour'} · Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
     ${acadHtml}
     ${eventTableHtml}
   </body></html>`);

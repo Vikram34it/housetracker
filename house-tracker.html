@@ -1650,6 +1650,9 @@
     </div>
     <div class="month-picker" id="monthPicker"></div>
     <div class="house-detail-grid" id="monthlyHouseDetails"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:24px;margin-bottom:4px">
+      <button class="btn btn-ghost btn-sm no-print" onclick="printAcademicAnalytics('monthly')">🖨️ Print Analytics</button>
+    </div>
     <div id="monthlyAcademicSummaryContainer"></div>
     <div style="margin-top:28px">
       <div class="section-header">
@@ -1723,6 +1726,9 @@
       <div class="section-title">House Details</div>
     </div>
     <div class="house-detail-grid" id="houseDetails"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:24px;margin-bottom:4px">
+      <button class="btn btn-ghost btn-sm no-print" onclick="printAcademicAnalytics()">🖨️ Print Analytics</button>
+    </div>
     <div id="academicSummaryContainer"></div>
     <div id="categoryMonthlyContainer"></div>
     <div style="margin-top:28px">
@@ -2644,6 +2650,7 @@ function render() {
   renderHistory();
   renderNavTabs();
   renderCategoryMonthly();
+  toggleAcademicPrintButtons();
 }
 
 function renderNavTabs() {
@@ -3192,6 +3199,48 @@ function printHouseEvents() {
   w.document.close();
   w.focus();
   setTimeout(() => { w.print(); }, 300);
+}
+
+// Print the 🏆 Inter-House Performance Analytics table (Houses or Monthly scope).
+function printAcademicAnalytics(scope) {
+  const isMonthly = scope === 'monthly';
+  const container = document.getElementById(isMonthly ? 'monthlyAcademicSummaryContainer' : 'academicSummaryContainer');
+  if(!container || !container.innerHTML.trim()) { showToast('No Inter-House Performance Analytics data to print', 'error'); return; }
+  const title = '🏆 Inter-House Performance Analytics';
+  const monthLabel = isMonthly ? ((document.getElementById('monthlyWindowLabel') || {}).textContent || '') : '';
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}${monthLabel ? ' (' + monthLabel + ')' : ''}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+      .academic-summary { margin-bottom: 30px; }
+      .academic-summary-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+      .academic-summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .academic-summary-table th { background: #4a3670; color: #fff; text-align: left; padding: 8px 10px; border: 1px solid #3b2a5e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+      .academic-summary-table td { padding: 7px 10px; border: 1px solid #cbd5e1; }
+      @media print { .no-print { display: none; } }
+    </style></head><body>
+    <h1>${title}</h1>
+    <div class="sub">${monthLabel ? monthLabel + ' · ' : ''}Generated on ${new Date().toLocaleString('en-IN')} · Viva House Championship</div>
+    ${container.innerHTML}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 300);
+}
+
+// Show/hide the "Print Analytics" buttons depending on whether academic data exists.
+function toggleAcademicPrintButtons() {
+  ['academicSummaryContainer', 'monthlyAcademicSummaryContainer'].forEach(id => {
+    const c = document.getElementById(id);
+    const wrap = c && c.previousElementSibling;
+    if(wrap && wrap.querySelector) {
+      const btn = wrap.querySelector('.no-print');
+      if(btn) wrap.style.display = (c && c.innerHTML.trim()) ? 'flex' : 'none';
+    }
+  });
 }
 
 function printMonthlyHouseEvents() {
@@ -4007,6 +4056,7 @@ function renderMonthlyStats() {
   renderHouseDetailsFor(getCategoryRankedStandingsFor(winEntries), 'monthlyHouseDetails', {});
   renderHouseEventsTableFor(winEntries, 'monthlyHouseEventsTableContainer', { tableId: 'monthlyHouseEventsTable', acadCumulativeValues: monthlyAcad.ranking.hasData ? monthlyAcad.ranking.cumulative : null });
   renderMonthlyAcademicSummary(monthlyAcad.ranking);
+  toggleAcademicPrintButtons();
 }
 
 function getMonthlyAcademicData(winEntries) {

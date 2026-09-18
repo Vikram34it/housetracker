@@ -2146,6 +2146,20 @@ function gradeLabel(g) {
   return String(g);
 }
 
+// Parse the average/total out of an academic entry's Note. Excel imports write
+// "Avg: 404.6 | 91 students"; Bulk-added Academic Excellence rows may hold a
+// plain number like "404.6". Both forms are accepted so the note value always
+// shows as the house average in the 🏆 Inter-House Performance Analytics.
+function extractNoteValue(note) {
+  const s = String(note || '');
+  const avg = s.match(/Avg:\s*([\d.]+)/i);
+  if(avg) { const v = parseFloat(avg[1]); return isNaN(v) ? null : v; }
+  const num = s.match(/^\s*[+-]?\d+(?:\.\d+)?/);
+  if(!num) return null;
+  const v = parseFloat(num[0]);
+  return isNaN(v) ? null : v;
+}
+
 // Coerce any value to a finite number. Protects Dashboard / House Details / Awards /
 // History against legacy '-' / empty / NaN cells in the sheet, which would otherwise
 // turn house totals into strings/NaN and break ranking and bar widths.
@@ -3221,7 +3235,7 @@ function computeOverallData(acadEntries) {
   (acadEntries || []).forEach(e => {
     if(gradeOf(e.subCategory) !== null) return;
     if(!HOUSES.includes(e.house)) return;
-    if(!String(e.note || '').match(/Avg:\s*([\d.]+)/i)) return;
+    if(extractNoteValue(e.note) === null) return;
     matched++;
     if(e.subCategory) overallLabels.add(e.subCategory);
   });
@@ -3293,8 +3307,8 @@ function computeAcademicRankingData(entriesArr, studentDataArr) {
     if(!HOUSES.includes(e.house)) return;
     const g = gradeOf(e.subCategory) || gradeOf(e.event);
     if(g === null) return;
-    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
-    if(!m) return;
+    const na = extractNoteValue(e.note);
+    if(na === null) return;
     found = true;
     const exam = e.event || 'General';
     const key = g + '|' + exam;
@@ -3303,8 +3317,7 @@ function computeAcademicRankingData(entriesArr, studentDataArr) {
     if(!cells[key]) cells[key] = { grade: g, exam, commonLabel: cl || null, houses: {} };
     if(!cells[key].houses[e.house]) cells[key].houses[e.house] = { avgSum: 0, count: 0 };
     const d = cells[key].houses[e.house];
-    const mAvg = parseFloat(m[1]);
-    d.avgSum += isNaN(mAvg) ? 0 : mAvg;
+    d.avgSum += na;
     d.count++;
   });
 
@@ -3609,8 +3622,8 @@ function renderFromEntries(container, classEntries, acadEntries) {
     const d = classEventData[cls][event][e.house];
     d.points += pts(e.points);
     d.count++;
-    const m = String(e.note || '').match(/Avg:\s*([\d.]+)/i);
-    if(m) { d.avgSum += parseFloat(m[1]); d.avgCount++; }
+    const na = extractNoteValue(e.note);
+    if(na !== null) { d.avgSum += na; d.avgCount++; }
   });
 
   const studentAvgs = {};
@@ -3822,8 +3835,8 @@ function renderFromAcadEntries(container, acadEntries) {
     eventData[event][e.house].points += pts(e.points);
     eventData[event][e.house].count++;
     if(e.note) {
-      const m = e.note.match(/Avg:\s*([\d.]+)/i);
-      if(m) { eventData[event][e.house].avgSum += parseFloat(m[1]); eventData[event][e.house].avgCount++; }
+      const na = extractNoteValue(e.note);
+      if(na !== null) { eventData[event][e.house].avgSum += na; eventData[event][e.house].avgCount++; }
     }
   });
 
@@ -4260,7 +4273,7 @@ function updateBulkHouses() {
           <select class="form-select" id="bulkHouse_${i}" style="flex:1;min-width:110px" title="House">${HOUSES.map(x=>`<option value="${x}" ${x===h?'selected':''}>${x}</option>`).join('')}</select>
           <select class="form-select" id="bulkPos_${i}" style="flex:1" onchange="updateBulkPoints()">${posOptions}</select>
           <input type="number" class="form-input" id="bulkPts_${i}" value="0" min="0" readonly style="flex:0.5;text-align:center" title="Auto-calculated points">
-          <input type="text" class="form-input" id="bulkNote_${i}" placeholder="Note (optional)" style="flex:2">
+          <input type="text" class="form-input" id="bulkNote_${i}" placeholder="${cat === 'Academics' ? 'Average e.g. 404.6 (shown in Analytics)' : 'Note (optional)'}" style="flex:2">
         </div>
       `).join('')}
     </div>`;
@@ -4421,7 +4434,8 @@ async function saveBulk() {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
         house, category: cat, subCategory: sub,
         position: pos, points: pts, event, note: noteEl ? noteEl.value : '',
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        ...(cat === 'Academics' ? { exam: event } : {})
       });
       count++;
     }
